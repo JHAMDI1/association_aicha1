@@ -45,6 +45,12 @@ fn init_database() -> Result<Connection> {
 fn run_migrations(conn: &Connection) -> Result<()> {
     // Migration 001: Initial Schema (without seed data)
     conn.execute_batch(include_str!("../migrations/001_init.sql"))?;
+
+    // Migration 002: Add carnet info
+    // We execute statements individually and ignore errors (in case columns already exist)
+    let _ = conn.execute("ALTER TABLE recus ADD COLUMN numero_carnet TEXT", []);
+    let _ = conn.execute("ALTER TABLE recus ADD COLUMN numero_recu_physique TEXT", []);
+
     Ok(())
 }
 

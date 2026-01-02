@@ -9,6 +9,10 @@ mod services;
 
 use models::{LoginResponse, CreateUserRequest, UpdateUserRequest, UserPublic};
 use services::{Eleve, EleveListItem, CreateEleveRequest, UpdateEleveRequest};
+use services::niveaux_service::{Niveau, CreateNiveauRequest, UpdateNiveauRequest};
+use services::enseignants_service::{Enseignant, CreateEnseignantRequest, UpdateEnseignantRequest};
+use services::classes_service::{Classe, ClasseListItem, CreateClasseRequest, UpdateClasseRequest};
+use services::{PaiementStatus, CreateRecuRequest, RecuDetail, RecuListItem};
 use std::sync::Mutex;
 use once_cell::sync::Lazy;
 
@@ -124,6 +128,137 @@ fn upload_photo(eleve_id: String, photo_base64: String) -> Result<String, String
     services::upload_photo(&eleve_id, &photo_base64).map_err(|e| e.to_string())
 }
 
+// ============================================
+// NIVEAUX COMMANDS
+// ============================================
+
+#[tauri::command]
+fn get_niveaux() -> Result<Vec<Niveau>, String> {
+    services::get_all_niveaux().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_niveau(id: String) -> Result<Niveau, String> {
+    services::get_niveau_by_id(&id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn create_niveau(request: CreateNiveauRequest) -> Result<Niveau, String> {
+    services::create_niveau(request).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn update_niveau(id: String, request: UpdateNiveauRequest) -> Result<Niveau, String> {
+    services::update_niveau(&id, request).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn delete_niveau(id: String) -> Result<String, String> {
+    services::delete_niveau(&id).map_err(|e| e.to_string())?;
+    Ok("Niveau supprimé".to_string())
+}
+
+// ============================================
+// ENSEIGNANTS COMMANDS
+// ============================================
+
+#[tauri::command]
+fn get_enseignants(search: Option<String>) -> Result<Vec<Enseignant>, String> {
+    services::get_all_enseignants(search).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_enseignant(id: String) -> Result<Enseignant, String> {
+    services::get_enseignant_by_id(&id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn create_enseignant(request: CreateEnseignantRequest) -> Result<Enseignant, String> {
+    services::create_enseignant(request).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn update_enseignant(id: String, request: UpdateEnseignantRequest) -> Result<Enseignant, String> {
+    services::update_enseignant(&id, request).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn delete_enseignant(id: String) -> Result<String, String> {
+    services::delete_enseignant(&id).map_err(|e| e.to_string())?;
+    Ok("Enseignant supprimé".to_string())
+}
+
+// ============================================
+// CLASSES COMMANDS
+// ============================================
+
+#[tauri::command]
+fn get_classes() -> Result<Vec<ClasseListItem>, String> {
+    services::get_all_classes().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_classe(id: String) -> Result<Classe, String> {
+    services::get_classe_by_id(&id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn create_classe(request: CreateClasseRequest) -> Result<Classe, String> {
+    services::create_classe(request).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn update_classe(id: String, request: UpdateClasseRequest) -> Result<Classe, String> {
+    services::update_classe(&id, request).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn delete_classe(id: String) -> Result<String, String> {
+    services::delete_classe(&id).map_err(|e| e.to_string())?;
+    Ok("Classe supprimée".to_string())
+}
+
+// ============================================
+// PAIEMENTS COMMANDS
+// ============================================
+
+#[tauri::command]
+fn get_paiement_status(eleve_id: String, annee_scolaire: String) -> Result<PaiementStatus, String> {
+    services::get_paiement_status(&eleve_id, &annee_scolaire).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn create_paiement(request: CreateRecuRequest) -> Result<RecuDetail, String> {
+    // Get current user from session
+    let session = CURRENT_USER.lock().unwrap();
+    let user_id = session.as_ref()
+        .map(|u| u.id.clone())
+        .ok_or_else(|| "Non authentifié".to_string())?;
+    
+    services::create_recu(request, &user_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_recu(recu_id: String) -> Result<RecuDetail, String> {
+    services::get_recu_by_id(&recu_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_recus_eleve(eleve_id: String) -> Result<Vec<RecuListItem>, String> {
+    services::get_recus_by_eleve(&eleve_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_all_recus_list() -> Result<Vec<RecuListItem>, String> {
+    services::get_all_recus().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn annuler_paiement(recu_id: String) -> Result<String, String> {
+    services::annuler_recu(&recu_id).map_err(|e| e.to_string())?;
+    Ok("Reçu annulé".to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Initialize database on startup
@@ -148,6 +283,31 @@ pub fn run() {
             update_eleve,
             delete_eleve,
             upload_photo,
+            // Niveaux
+            get_niveaux,
+            get_niveau,
+            create_niveau,
+            update_niveau,
+            delete_niveau,
+            // Enseignants
+            get_enseignants,
+            get_enseignant,
+            create_enseignant,
+            update_enseignant,
+            delete_enseignant,
+            // Classes
+            get_classes,
+            get_classe,
+            create_classe,
+            update_classe,
+            delete_classe,
+            // Paiements
+            get_paiement_status,
+            create_paiement,
+            get_recu,
+            get_recus_eleve,
+            get_all_recus_list,
+            annuler_paiement,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useAuth } from "@/features/auth";
 import { ElevesPage } from "@/features/eleves";
+import { NiveauxPage, EnseignantsPage, ClassesPage } from "@/features/scolarite";
+import { PaiementsPage } from "@/features/paiements";
 import { Button } from "@/components/ui/button";
 import logoImage from "@/assets/logo.jpeg";
 
-type Page = "dashboard" | "eleves" | "paiements" | "rapports" | "users";
+type Page = "dashboard" | "eleves" | "paiements" | "rapports" | "users" | "classes" | "niveaux" | "enseignants";
 
 export function Dashboard() {
     const { user, logout, isAdmin } = useAuth();
@@ -14,6 +16,12 @@ export function Dashboard() {
         { id: "dashboard" as Page, label: "Tableau de bord", icon: "📊" },
         { id: "eleves" as Page, label: "Élèves", icon: "🎓" },
         { id: "paiements" as Page, label: "Paiements", icon: "💳" },
+
+        // Section Scolarité
+        { id: "classes" as Page, label: "Classes", icon: "🏫" },
+        { id: "enseignants" as Page, label: "Enseignants", icon: "👨‍🏫" },
+        { id: "niveaux" as Page, label: "Niveaux", icon: "📚" },
+
         { id: "rapports" as Page, label: "Rapports", icon: "📈" },
         ...(isAdmin ? [{ id: "users" as Page, label: "Utilisateurs", icon: "👥" }] : []),
     ];
@@ -40,14 +48,14 @@ export function Dashboard() {
                 </div>
 
                 {/* Navigation */}
-                <nav className="flex-1 p-4 space-y-1">
+                <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
                     {navItems.map((item) => (
                         <button
                             key={item.id}
                             onClick={() => setCurrentPage(item.id)}
                             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${currentPage === item.id
-                                    ? "bg-emerald-50 text-emerald-700"
-                                    : "text-gray-600 hover:bg-gray-50"
+                                ? "bg-emerald-50 text-emerald-700"
+                                : "text-gray-600 hover:bg-gray-50"
                                 }`}
                         >
                             <span className="text-lg">{item.icon}</span>
@@ -80,10 +88,13 @@ export function Dashboard() {
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 overflow-auto">
+            <main className="flex-1 overflow-auto bg-gray-50 p-6">
                 {currentPage === "dashboard" && <DashboardHome onNavigate={setCurrentPage} />}
                 {currentPage === "eleves" && <ElevesPage />}
-                {currentPage === "paiements" && <PlaceholderPage title="Paiements" icon="💳" />}
+                {currentPage === "classes" && <ClassesPage />}
+                {currentPage === "niveaux" && <NiveauxPage />}
+                {currentPage === "enseignants" && <EnseignantsPage />}
+                {currentPage === "paiements" && <PaiementsPage />}
                 {currentPage === "rapports" && <PlaceholderPage title="Rapports" icon="📈" />}
                 {currentPage === "users" && <PlaceholderPage title="Utilisateurs" icon="👥" />}
             </main>

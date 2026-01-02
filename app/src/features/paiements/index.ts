@@ -1,2 +1,3 @@
-// Placeholder for Paiements feature components
-export { };
+export * from "./api";
+export * from "./PaiementModal";
+export * from "./PaiementsPage";

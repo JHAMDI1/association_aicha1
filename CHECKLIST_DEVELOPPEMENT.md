@@ -21,26 +21,22 @@
   ```
   /src-tauri/src
     /commands     # Couche Présentation (Points d'entrée Tauri)
-    /services     # Couche Application (Logique métier)
-    /repositories # Couche Infrastructure (Accès données)
+    /services     # Couche Application (Logique métier & SQL)
     /models       # Couche Domaine (Entités & DTOs)
     /errors       # Gestion centralisée des erreurs
     /config       # Configuration (paths, constantes)
   ```
-- [ ] Implémenter le pattern **Repository**
-  - [ ] Trait `Repository<T>` générique (CRUD de base)
-  - [ ] `EleveRepository`, `RecuRepository`, etc.
-  - [ ] Abstraction pour pouvoir changer de BDD plus tard
-- [ ] Implémenter le pattern **Service**
-  - [ ] `PaymentService` (logique de paiement centralisée)
-  - [ ] `AuthService` (authentification)
-  - [ ] Les services appellent les repositories, jamais de SQL direct
-- [ ] Gestion des erreurs centralisée
-  - [ ] Enum `AppError` (NotFound, Unauthorized, ValidationError, DbError)
-  - [ ] Conversion automatique vers erreurs Tauri lisibles
-- [ ] Configuration centralisée
-  - [ ] Constantes (chemins, versions, limites)
-  - [ ] Lecture depuis fichier `.env` local (optionnel)
+- [~] Implémenter le pattern **Repository** (Intégré dans les Services POUR simplifier)
+- [x] Implémenter le pattern **Service**
+  - [x] `AuthService` (authentification)
+  - [x] `ElevesService`, `NiveauxService`, `ClassesService`...
+  - [x] Les services gèrent la logique et la BDD
+- [x] Gestion des erreurs centralisée
+  - [x] Enum `AppError` (NotFound, Unauthorized, ValidationError, DbError)
+  - [x] Conversion automatique vers erreurs Tauri lisibles
+- [x] Configuration centralisée
+  - [x] Constantes (chemins, versions, limites)
+  - [x] `config.toml` pour les paramètres runtime
 
 ### 🏗️ Architecture Frontend (React) - Feature-Based
 - [x] Définir la structure modulaire :
@@ -70,7 +66,7 @@
   - [ ] TanStack Query pour le cache des données serveur
 
 ### Base de données SQLite
-- [ ] Ajouter les dépendances Rust : `rusqlite`, `serde`, `thiserror`
+- [x] Ajouter les dépendances Rust : `rusqlite`, `serde`, `thiserror`
 - [x] Créer le fichier de migration SQL initial (`migrations/001_init.sql`)
   - [x] Table `users` (id UUID, nom, prenom, email, password_hash, role ENUM, created_at, deleted_at)
   - [x] Table `eleves` (id UUID, code_matricule UNIQUE, + champs personnels + timestamps)
@@ -85,18 +81,18 @@
   - [x] Table `messages`
   - [x] Table `audit_logs` (action, entite, ancien_valeur JSON, nouveau_valeur JSON, timestamp)
 - [x] Index sur les colonnes fréquemment recherchées (nom, code_matricule)
-- [ ] Script de création automatique de la BDD au premier lancement
+- [x] Script de création automatique de la BDD au premier lancement (dans `database.rs`)
 - [x] Seed de données de test (utilisateur admin, quelques niveaux)
 
 ### UI de base (Design System)
 - [x] Installer TailwindCSS + plugins (forms, typography)
-- [ ] Configurer le thème (couleurs de l'association, fonts)
+- [x] Configurer le thème (couleurs de l'association, fonts)
 - [x] Installer Shadcn/UI (composants accessibles)
   - [x] Button, Input, Card, Dialog, Toast, DataTable
-- [ ] Créer le Layout principal
-  - [ ] `<AppShell>` : Sidebar collapsible + Header + Content
-  - [ ] Responsive (même si Desktop, prévoir les breakpoints)
-- [ ] Créer la page Login (maquette statique)
+- [x] Créer le Layout principal
+  - [x] `<AppShell>` : Dashboard Sidebar
+  - [x] Responsive (même si Desktop, prévoir les breakpoints)
+- [x] Créer la page Login (maquette statique)
 - [ ] Créer un composant `<ErrorBoundary>` global
 
 ## 📋 SPRINT 1 : Authentification & Utilisateurs (Semaine 2)
@@ -168,23 +164,23 @@
 *Objectif : Gérer les Niveaux, Classes, Enseignants et Inscriptions*
 
 ### Backend (Rust)
-- [ ] CRUD `niveaux` (Année 1, Massar, Chatibia...)
-- [ ] CRUD `enseignants`
-- [ ] CRUD `classes`
-  - [ ] Associer un niveau
-  - [ ] Associer un enseignant principal (optionnel)
+- [x] CRUD `niveaux` (Année 1, Massar, Chatibia...)
+- [x] CRUD `enseignants`
+- [x] CRUD `classes`
+  - [x] Associer un niveau
+  - [x] Associer un enseignant principal (optionnel)
 - [ ] CRUD `inscriptions`
   - [ ] Associer un élève à une classe pour une année scolaire
 
 ### Frontend (React)
-- [ ] Page "Paramètres > Niveaux"
-  - [ ] Liste + Ajout/Modif/Suppression
-- [ ] Page "Enseignants"
-  - [ ] Tableau + CRUD complet
-- [ ] Page "Classes"
-  - [ ] Vue en grille (Cards) ou Tableau
-  - [ ] Afficher le nombre d'élèves par classe
-  - [ ] Lien vers le détail de la classe
+- [x] Page "Paramètres > Niveaux"
+  - [x] Liste + Ajout/Modif/Suppression
+- [x] Page "Enseignants"
+  - [x] Tableau + CRUD complet
+- [x] Page "Classes"
+  - [x] Vue en grille (Cards) ou Tableau -> (Choix: Tableau)
+  - [x] Afficher le nombre d'élèves par classe (Backend count)
+  - [ ] Lien vers le détail de la classe (Prochain Sprint Inscriptions)
 - [ ] Page "Détail Classe"
   - [ ] Liste des élèves inscrits
   - [ ] Bouton "Inscrire un élève" (Modale avec recherche)
@@ -196,26 +192,26 @@
 *Objectif : Encaisser un paiement et imprimer un reçu*
 
 ### Backend (Rust)
-- [ ] Commande `get_paiement_status(eleve_id, annee)`
-  - [ ] Retourne les 12 mois avec statut (payé/non payé)
-- [ ] Commande `create_recu(data)`
-  - [ ] Insérer dans `recus`
-  - [ ] Insérer les lignes dans `lignes_paiement`
-  - [ ] Vérifier qu'un mois n'est pas payé deux fois (contrainte)
-- [ ] Commande `get_recus_by_eleve(eleve_id)`
-- [ ] Commande `annuler_recu(recu_id)` (Admin only, soft delete)
+- [x] Commande `get_paiement_status(eleve_id, annee)`
+  - [x] Retourne les 12 mois avec statut (payé/non payé)
+- [x] Commande `create_recu(data)`
+  - [x] Insérer dans `recus`
+  - [x] Insérer les lignes dans `lignes_paiement`
+  - [x] Vérifier qu'un mois n'est pas payé deux fois (contrainte)
+- [x] Commande `get_recus_by_eleve(eleve_id)`
+- [x] Commande `annuler_recu(recu_id)` (Admin only, soft delete)
 
 ### Frontend (React)
-- [ ] Modale "Nouveau Paiement"
-  - [ ] Recherche d'élève (autocomplete)
-  - [ ] Affichage photo + classe de l'élève sélectionné
-  - [ ] Grille des 12 mois (cases à cocher)
-    - [ ] Mois déjà payés = Grisés + Check
-    - [ ] Mois sélectionnés = Surlignés
-  - [ ] Calcul automatique du total
-  - [ ] Sélection type de paiement
-  - [ ] Bouton "Confirmer & Imprimer"
-- [ ] Toast de succès
+- [x] Modale "Nouveau Paiement"
+  - [x] Recherche d'élève (autocomplete)
+  - [x] Affichage photo + classe de l'élève sélectionné
+  - [x] Grille des 12 mois (cases à cocher)
+    - [x] Mois déjà payés = Grisés + Check
+    - [x] Mois sélectionnés = Surlignés
+  - [x] Calcul automatique du total (Montant manuel ajouté)
+  - [x] Sélection type de paiement
+  - [x] Bouton "Confirmer & Imprimer"
+- [x] Toast de succès
 - [ ] Génération du reçu PDF
   - [ ] Numéro de reçu, Date
   - [ ] Infos Élève

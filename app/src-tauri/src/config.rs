@@ -1,6 +1,9 @@
 use serde::Deserialize;
 use std::fs;
 use std::path::PathBuf;
+use once_cell::sync::Lazy;
+
+pub static CONFIG: Lazy<Config> = Lazy::new(|| load_config());
 
 /// Configuration de l'administrateur par défaut
 #[derive(Debug, Deserialize, Clone)]
