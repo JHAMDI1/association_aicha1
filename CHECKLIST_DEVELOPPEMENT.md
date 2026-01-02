@@ -134,33 +134,33 @@
 *Objectif : CRUD complet des élèves*
 
 ### Backend (Rust)
-- [ ] Commande `get_all_eleves()`
-- [ ] Commande `get_eleve_by_id(id)`
-- [ ] Commande `create_eleve(data)`
-- [ ] Commande `update_eleve(id, data)`
-- [ ] Commande `delete_eleve(id)` (soft delete)
-- [ ] Commande `search_eleves(query)` (recherche par nom)
+- [x] Commande `get_all_eleves()`
+- [x] Commande `get_eleve_by_id(id)`
+- [x] Commande `create_eleve(data)`
+- [x] Commande `update_eleve(id, data)`
+- [x] Commande `delete_eleve(id)` (soft delete)
+- [x] Commande `search_eleves(query)` (intégré dans get_all)
 
 ### Frontend (React)
-- [ ] Page "Liste des Élèves"
-  - [ ] Tableau avec colonnes : Photo, Nom, Prénom, Classe, Statut Paiement
-  - [ ] Barre de recherche instantanée
-  - [ ] Bouton "Ajouter un Élève"
-- [ ] Modale / Page "Fiche Élève"
-  - [ ] Onglet Infos : Formulaire complet
-    - [ ] Photo (upload local)
-    - [ ] Nom, Prénom
-    - [ ] Date de naissance, Sexe
-    - [ ] Tuteur : Nom, Téléphone, CIN
-    - [ ] Adresse
+- [x] Page "Liste des Élèves"
+  - [x] Tableau avec colonnes : Photo, Nom, Prénom, Classe, Statut Paiement
+  - [x] Barre de recherche instantanée
+  - [x] Bouton "Ajouter un Élève"
+- [x] Modale / Page "Fiche Élève"
+  - [x] Onglet Infos : Formulaire complet
+    - [x] Photo (upload local)
+    - [x] Nom, Prénom
+    - [x] Date de naissance, Sexe
+    - [x] Tuteur : Nom, Téléphone, CIN
+    - [x] Adresse
   - [ ] Onglet Finances : (lecture seule pour l'instant)
   - [ ] Onglet Scolarité : Classe actuelle
-- [ ] Confirmation avant suppression
+- [x] Confirmation avant suppression
 
 ### Upload de photos
-- [ ] Créer le dossier sécurisé pour les uploads
-- [ ] Commande Rust `upload_photo(file_bytes, eleve_id)`
-- [ ] Affichage de la photo dans la fiche et la liste
+- [x] Créer le dossier sécurisé pour les uploads
+- [x] Commande Rust `upload_photo(file_bytes, eleve_id)`
+- [x] Affichage de la photo dans la fiche et la liste
 
 ---
 
