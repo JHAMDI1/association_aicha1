@@ -212,12 +212,12 @@
   - [x] Sélection type de paiement
   - [x] Bouton "Confirmer & Imprimer"
 - [x] Toast de succès
-- [ ] Génération du reçu PDF
-  - [ ] Numéro de reçu, Date
-  - [ ] Infos Élève
-  - [ ] Détail des mois payés
-  - [ ] Montant Total
-- [ ] Envoi à l'imprimante système
+- [x] Génération du reçu PDF (Remplacé par Saisie Manuelle)
+  - [x] Numéro de reçu, Date
+  - [x] Infos Élève
+  - [x] Détail des mois payés
+  - [x] Montant Total
+- [ ] Envoi à l'imprimante système (Non requis pour l'instant)
 
 ### Impression
 - [ ] Intégration impression via Tauri (API système)
