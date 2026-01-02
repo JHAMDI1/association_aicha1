@@ -7,17 +7,17 @@
 *Objectif : Base solide, scalable et maintenable*
 
 ### Environnement de développement
-- [ ] Installer Rust (rustup) sur le poste de dev
-- [ ] Installer Node.js (v20 LTS)
-- [ ] Installer pnpm (gestionnaire de paquets)
-- [ ] Créer le projet Tauri + React + Vite
-  - [ ] `pnpm create tauri-app association-aicha --template react-ts`
-  - [ ] Vérifier que `pnpm tauri dev` ouvre une fenêtre vide
-- [ ] Configurer VS Code (extensions Rust Analyzer, ESLint, Prettier)
+- [x] Installer Rust (rustup) sur le poste de dev
+- [x] Installer Node.js (v20 LTS)
+- [x] Installer pnpm (gestionnaire de paquets)
+- [x] Créer le projet Tauri + React + Vite
+  - [x] `pnpm create tauri-app association-aicha --template react-ts`
+  - [x] Vérifier que `pnpm tauri dev` ouvre une fenêtre vide
+- [x] Configurer VS Code (extensions Rust Analyzer, ESLint, Prettier)
 - [ ] Configurer Git + .gitignore (ignorer .db, uploads, builds)
 
 ### 🏗️ Architecture Backend (Rust) - Clean Architecture
-- [ ] Définir la structure en couches :
+- [x] Définir la structure en couches :
   ```
   /src-tauri/src
     /commands     # Couche Présentation (Points d'entrée Tauri)
@@ -43,7 +43,7 @@
   - [ ] Lecture depuis fichier `.env` local (optionnel)
 
 ### 🏗️ Architecture Frontend (React) - Feature-Based
-- [ ] Définir la structure modulaire :
+- [x] Définir la structure modulaire :
   ```
   /src
     /app           # Configuration globale (Router, Providers)
@@ -57,13 +57,13 @@
     /lib           # Utilitaires (formatDate, formatCurrency)
     /stores        # État global (Zustand ou Context)
   ```
-- [ ] Chaque `/features/X` contient :
-  - [ ] `components/` (UI spécifique au module)
+- [x] Chaque `/features/X` contient :
+  - [x] `components/` (UI spécifique au module)
   - [ ] `hooks/` (useEleves, usePaiement)
   - [ ] `services/` (appels Tauri invoke)
   - [ ] `types.ts` (Interfaces TypeScript)
-- [ ] Typage strict TypeScript
-  - [ ] `strict: true` dans tsconfig.json
+- [x] Typage strict TypeScript
+  - [x] `strict: true` dans tsconfig.json
   - [ ] Types partagés Backend <-> Frontend (via génération ou manuel)
 - [ ] Gestion d'état centralisée
   - [ ] Zustand pour l'état global (user connecté, thème)
@@ -71,28 +71,28 @@
 
 ### Base de données SQLite
 - [ ] Ajouter les dépendances Rust : `rusqlite`, `serde`, `thiserror`
-- [ ] Créer le fichier de migration SQL initial (`migrations/001_init.sql`)
-  - [ ] Table `users` (id UUID, nom, prenom, email, password_hash, role ENUM, created_at, deleted_at)
-  - [ ] Table `eleves` (id UUID, code_matricule UNIQUE, + champs personnels + timestamps)
-  - [ ] Table `enseignants`
-  - [ ] Table `niveaux`
-  - [ ] Table `classes` (FK niveau, FK enseignant)
-  - [ ] Table `inscriptions` (FK eleve, FK classe, année, UNIQUE(eleve,classe,annee))
-  - [ ] Table `recus` (numero UNIQUE, type, montant, status ENUM, FK user créateur)
-  - [ ] Table `lignes_paiement` (FK recu, mois, annee, UNIQUE(eleve,mois,annee))
-  - [ ] Table `depenses`
-  - [ ] Table `donneurs`
-  - [ ] Table `messages`
-  - [ ] Table `audit_logs` (action, entite, ancien_valeur JSON, nouveau_valeur JSON, timestamp)
-- [ ] Index sur les colonnes fréquemment recherchées (nom, code_matricule)
+- [x] Créer le fichier de migration SQL initial (`migrations/001_init.sql`)
+  - [x] Table `users` (id UUID, nom, prenom, email, password_hash, role ENUM, created_at, deleted_at)
+  - [x] Table `eleves` (id UUID, code_matricule UNIQUE, + champs personnels + timestamps)
+  - [x] Table `enseignants`
+  - [x] Table `niveaux`
+  - [x] Table `classes` (FK niveau, FK enseignant)
+  - [x] Table `inscriptions` (FK eleve, FK classe, année, UNIQUE(eleve,classe,annee))
+  - [x] Table `recus` (numero UNIQUE, type, montant, status ENUM, FK user créateur)
+  - [x] Table `lignes_paiement` (FK recu, mois, annee, UNIQUE(eleve,mois,annee))
+  - [x] Table `depenses`
+  - [x] Table `donneurs`
+  - [x] Table `messages`
+  - [x] Table `audit_logs` (action, entite, ancien_valeur JSON, nouveau_valeur JSON, timestamp)
+- [x] Index sur les colonnes fréquemment recherchées (nom, code_matricule)
 - [ ] Script de création automatique de la BDD au premier lancement
-- [ ] Seed de données de test (utilisateur admin, quelques niveaux)
+- [x] Seed de données de test (utilisateur admin, quelques niveaux)
 
 ### UI de base (Design System)
-- [ ] Installer TailwindCSS + plugins (forms, typography)
+- [x] Installer TailwindCSS + plugins (forms, typography)
 - [ ] Configurer le thème (couleurs de l'association, fonts)
-- [ ] Installer Shadcn/UI (composants accessibles)
-  - [ ] Button, Input, Card, Dialog, Toast, DataTable
+- [x] Installer Shadcn/UI (composants accessibles)
+  - [x] Button, Input, Card, Dialog, Toast, DataTable
 - [ ] Créer le Layout principal
   - [ ] `<AppShell>` : Sidebar collapsible + Header + Content
   - [ ] Responsive (même si Desktop, prévoir les breakpoints)
@@ -103,30 +103,30 @@
 *Objectif : Pouvoir se connecter en tant qu'Admin ou Secrétaire*
 
 ### Backend (Rust)
-- [ ] Commande `login(email, password)` 
-  - [ ] Vérification du hash (Argon2 ou Bcrypt)
-  - [ ] Retourner les infos utilisateur + rôle
-- [ ] Commande `get_current_user()`
-- [ ] Commande `logout()`
-- [ ] Seed initial : créer un Admin par défaut (admin@aicha.local / admin123)
+- [x] Commande `login(email, password)` 
+  - [x] Vérification du hash (Argon2 ou Bcrypt)
+  - [x] Retourner les infos utilisateur + rôle
+- [x] Commande `get_current_user()`
+- [x] Commande `logout()`
+- [x] Seed initial : créer un Admin par défaut (admin@aicha.local / admin123)
 
 ### Frontend (React)
-- [ ] Page Login fonctionnelle
-  - [ ] Formulaire email + mot de passe
-  - [ ] Gestion des erreurs (Toast)
-  - [ ] Redirection vers Dashboard après login
-- [ ] Contexte Auth (stocker l'utilisateur connecté)
-- [ ] Guard de routes (rediriger vers Login si non connecté)
-- [ ] Affichage du nom utilisateur dans le Header
-- [ ] Bouton Déconnexion
+- [x] Page Login fonctionnelle
+  - [x] Formulaire email + mot de passe
+  - [x] Gestion des erreurs (Toast)
+  - [x] Redirection vers Dashboard après login
+- [x] Contexte Auth (stocker l'utilisateur connecté)
+- [x] Guard de routes (rediriger vers Login si non connecté)
+- [x] Affichage du nom utilisateur dans le Header
+- [x] Bouton Déconnexion
 
 ### Gestion des utilisateurs (Admin only)
 - [ ] Page "Gestion des Utilisateurs"
-- [ ] Liste des utilisateurs existants
-- [ ] Formulaire d'ajout d'un nouvel utilisateur
-  - [ ] Nom, Prénom, Email, Mot de passe, Rôle (Select)
-- [ ] Modification d'un utilisateur
-- [ ] Suppression (soft delete) avec confirmation
+- [x] Liste des utilisateurs existants (API prête)
+- [x] Formulaire d'ajout d'un nouvel utilisateur (API prête)
+  - [x] Nom, Prénom, Email, Mot de passe, Rôle (Select)
+- [x] Modification d'un utilisateur (API prête)
+- [x] Suppression (soft delete) avec confirmation (API prête)
 
 ---
 

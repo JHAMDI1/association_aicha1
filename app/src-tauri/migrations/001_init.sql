@@ -203,9 +203,7 @@ CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit_logs(timestamp);
 -- SEED DATA (Données initiales)
 -- =============================================
 
--- Admin par défaut (mot de passe: admin123 - à changer!)
-INSERT OR IGNORE INTO users (id, nom, prenom, email, password_hash, role)
-VALUES ('admin-001', 'Admin', 'Principal', 'admin@aicha.local', '$argon2id$v=19$m=65536,t=3,p=4$c29tZXNhbHQ$hash', 'ADMIN');
+-- Note: Admin user is created by Rust code with proper password hash at startup
 
 -- Niveaux par défaut
 INSERT OR IGNORE INTO niveaux (id, nom, ordre) VALUES 

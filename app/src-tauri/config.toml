@@ -1,0 +1,35 @@
+# =============================================
+# Configuration de l'application Association Aicha
+# =============================================
+# Ce fichier contient les paramètres de configuration de l'application.
+# Il est lu au premier lancement pour créer l'administrateur par défaut.
+#
+# ⚠️ IMPORTANT: Changez le mot de passe par défaut après la première connexion!
+
+[admin]
+# Identifiants de l'administrateur par défaut
+# Ces données sont utilisées UNIQUEMENT si aucun admin n'existe dans la base
+email = "admin@aicha.local"
+password = "admin123"
+nom = "Admin"
+prenom = "Principal"
+
+[app]
+# Nom de l'association
+nom_association = "Association Aicha"
+# Année scolaire actuelle (format: YYYY-YYYY)
+annee_scolaire = "2025-2026"
+# Devise
+devise = "DH"
+
+[database]
+# Nom du fichier de base de données SQLite
+filename = "aicha_asso.db"
+
+[paiements]
+# Montant par défaut de la mensualité (en DH)
+mensualite_default = 100
+# Montant des frais d'inscription
+frais_inscription = 200
+# Montant de l'assurance
+assurance = 50
