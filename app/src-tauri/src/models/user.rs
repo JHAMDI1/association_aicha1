@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use chrono::{DateTime, Utc};
 
 /// User roles in the system
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -67,6 +66,7 @@ impl From<User> for UserPublic {
 
 /// Login request
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct LoginRequest {
     pub email: String,
     pub password: String,

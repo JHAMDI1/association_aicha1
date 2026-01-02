@@ -7,12 +7,13 @@ mod errors;
 mod models;
 mod services;
 
-use models::{LoginResponse, CreateUserRequest, UpdateUserRequest, UserPublic};
+use models::{LoginResponse, CreateUserRequest, UpdateUserRequest, UserPublic, UserRole};
 use services::{Eleve, EleveListItem, CreateEleveRequest, UpdateEleveRequest};
 use services::niveaux_service::{Niveau, CreateNiveauRequest, UpdateNiveauRequest};
 use services::enseignants_service::{Enseignant, CreateEnseignantRequest, UpdateEnseignantRequest};
 use services::classes_service::{Classe, ClasseListItem, CreateClasseRequest, UpdateClasseRequest};
 use services::{PaiementStatus, CreateRecuRequest, RecuDetail, RecuListItem};
+use services::{Depense, DepenseListItem, CreateDepenseRequest, DepenseStats};
 use std::sync::Mutex;
 use once_cell::sync::Lazy;
 
@@ -259,6 +260,76 @@ fn annuler_paiement(recu_id: String) -> Result<String, String> {
     Ok("Reçu annulé".to_string())
 }
 
+// ============================================
+// DEPENSES COMMANDS
+// ============================================
+
+#[tauri::command]
+fn get_depenses(etat_filter: Option<String>) -> Result<Vec<DepenseListItem>, String> {
+    services::get_all_depenses(etat_filter).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_depense(id: String) -> Result<Depense, String> {
+    services::get_depense_by_id(&id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn create_depense(request: CreateDepenseRequest) -> Result<Depense, String> {
+    let session = CURRENT_USER.lock().unwrap();
+    let user = session.as_ref().ok_or_else(|| "Non authentifié".to_string())?;
+    let is_admin = user.role == UserRole::Admin;
+    
+    services::create_depense(request, &user.id, is_admin).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn valider_depense(depense_id: String) -> Result<Depense, String> {
+    let session = CURRENT_USER.lock().unwrap();
+    let user = session.as_ref().ok_or_else(|| "Non authentifié".to_string())?;
+    
+    if user.role != UserRole::Admin {
+        return Err("Seul un administrateur peut valider une dépense".to_string());
+    }
+    
+    services::valider_depense(&depense_id, &user.id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn rejeter_depense(depense_id: String, motif: Option<String>) -> Result<Depense, String> {
+    let session = CURRENT_USER.lock().unwrap();
+    let user = session.as_ref().ok_or_else(|| "Non authentifié".to_string())?;
+    
+    if user.role != UserRole::Admin {
+        return Err("Seul un administrateur peut rejeter une dépense".to_string());
+    }
+    
+    services::rejeter_depense(&depense_id, &user.id, motif).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn delete_depense(id: String) -> Result<String, String> {
+    services::delete_depense(&id).map_err(|e| e.to_string())?;
+    Ok("Dépense supprimée".to_string())
+}
+
+#[tauri::command]
+#[allow(non_snake_case)]
+fn upload_piece_jointe(depenseId: String, fileBase64: String) -> Result<String, String> {
+    services::upload_piece_jointe(&depenseId, &fileBase64).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_depenses_stats() -> Result<DepenseStats, String> {
+    services::get_depenses_stats().map_err(|e| e.to_string())
+}
+
+/// Debug log command to forward frontend logs to terminal
+#[tauri::command]
+fn debug_log(message: String) {
+    println!("[FRONTEND] {}", message);
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Initialize database on startup
@@ -308,6 +379,16 @@ pub fn run() {
             get_recus_eleve,
             get_all_recus_list,
             annuler_paiement,
+            // Depenses
+            get_depenses,
+            get_depense,
+            create_depense,
+            valider_depense,
+            rejeter_depense,
+            delete_depense,
+            upload_piece_jointe,
+            get_depenses_stats,
+            debug_log,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

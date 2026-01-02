@@ -96,6 +96,7 @@ pub fn get_connection() -> std::sync::MutexGuard<'static, Connection> {
 }
 
 /// Get the application configuration
+#[allow(dead_code)]
 pub fn get_config() -> &'static Config {
     &CONFIG
 }

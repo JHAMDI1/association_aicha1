@@ -16,6 +16,7 @@ pub struct AdminConfig {
 
 /// Configuration de l'application
 #[derive(Debug, Deserialize, Clone)]
+#[allow(dead_code)]
 pub struct AppConfig {
     pub nom_association: String,
     pub annee_scolaire: String,
@@ -30,6 +31,7 @@ pub struct DatabaseConfig {
 
 /// Configuration des paiements
 #[derive(Debug, Deserialize, Clone)]
+#[allow(dead_code)]
 pub struct PaiementsConfig {
     pub mensualite_default: f64,
     pub frais_inscription: f64,

@@ -29,3 +29,10 @@ pub use paiements_service::{
     get_paiement_status, create_recu, get_recu_by_id, get_recus_by_eleve, get_all_recus, annuler_recu,
     PaiementStatus, CreateRecuRequest, RecuDetail, RecuListItem
 };
+
+pub mod depenses_service;
+pub use depenses_service::{
+    get_depense_by_id, get_all_depenses, create_depense, valider_depense, rejeter_depense,
+    delete_depense, upload_piece_jointe, get_depenses_stats,
+    Depense, DepenseListItem, CreateDepenseRequest, DepenseStats
+};

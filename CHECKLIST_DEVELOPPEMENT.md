@@ -217,38 +217,40 @@
   - [x] Infos Élève
   - [x] Détail des mois payés
   - [x] Montant Total
-- [ ] Envoi à l'imprimante système (Non requis pour l'instant)
 
-### Impression
-- [ ] Intégration impression via Tauri (API système)
-- [ ] Format Ticket 80mm (Imprimante thermique)
-- [ ] Format A4 (Imprimante normale)
-- [ ] Option "Aperçu avant impression"
 
 ---
 
-## 📋 SPRINT 5 : Ordres de Paiement & Dépenses (Semaine 7)
+## 📋 SPRINT 5 : Ordres de Paiement & Dépenses (Semaine 7) ✅
 *Objectif : Gérer les sorties d'argent*
 
 ### Backend (Rust)
-- [ ] CRUD `depenses` (Ordres de paiement)
-  - [ ] Champs : Bénéficiaire, Motif, Montant, Pièce jointe
-- [ ] Workflow de validation
-  - [ ] Création par Secrétaire -> Statut "En Attente"
-  - [ ] Validation par Admin -> Statut "Payé"
+- [x] CRUD `depenses` (Ordres de paiement)
+  - [x] Champs : Bénéficiaire, Motif, Montant, Pièce jointe
+  - [x] Numérotation automatique (D20260001, D20260002...)
+- [x] Workflow de validation
+  - [x] Création par Secrétaire -> Statut "En Attente"
+  - [x] Création par Admin -> Auto-validé "Validé"
+  - [x] Validation/Rejet par Admin
+- [x] Upload de pièce justificative (base64 -> fichier)
+  - [x] Feature `protocol-asset` pour affichage local
 
 ### Frontend (React)
-- [ ] Page "Dépenses"
-  - [ ] Liste des ordres de paiement
-  - [ ] Filtres : Statut, Date
-- [ ] Formulaire "Nouvel Ordre de Paiement"
-  - [ ] Type : Facture / Autre
-  - [ ] Si Facture : Upload de la preuve (photo)
-  - [ ] Si Autre : Liste d'articles (nom + prix)
-  - [ ] Montant total
-- [ ] Vue Admin : Liste "En attente de validation"
-  - [ ] Boutons Valider / Rejeter
-- [ ] Affichage de la photo de la facture (Modale zoom)
+- [x] Page "Dépenses"
+  - [x] Liste des ordres de paiement
+  - [x] Filtres : Statut (Tous, En Attente, Validé, Rejeté)
+  - [x] Statistiques (Total mois, En attente)
+- [x] Formulaire "Nouvel Ordre de Paiement"
+  - [x] Type : Facture / Autre
+  - [x] Si Facture : Upload de la preuve (photo/PDF) obligatoire
+  - [x] Aperçu de la photo avant soumission
+  - [x] Montant total
+- [x] Vue Admin : Liste "En attente de validation"
+  - [x] Boutons Valider / Rejeter
+- [x] Affichage de la photo de la facture
+  - [x] Icône preuve dans la table
+  - [x] Modale de détail avec image complète
+  - [x] Design amélioré (carte montant, grille infos)
 
 ---
 
