@@ -254,23 +254,23 @@
 
 ---
 
-## 📋 SPRINT 6 : Dons & Donneurs (Semaine 8)
+## 📋 SPRINT 6 : Dons & Donneurs (Semaine 8) ✅
 *Objectif : Enregistrer les dons (élèves, externes, anonymes)*
 
 ### Backend (Rust)
-- [ ] CRUD `donneurs` (Personnes externes)
-- [ ] Logique Don dans `recus`
-  - [ ] Type = "Don"
-  - [ ] Source = Élève / Donneur / Anonyme
+- [x] CRUD `donneurs` (Personnes externes)
+- [x] Logique Don dans `recus`
+  - [x] Type = "Don"
+  - [x] Source = Élève / Donneur / Anonyme
 
 ### Frontend (React)
-- [ ] Page "Donneurs"
-  - [ ] Liste + CRUD
-- [ ] Modale "Enregistrer un Don"
-  - [ ] Sélectionner source : Élève existant / Donneur existant / Nouveau donneur / Anonyme
-  - [ ] Montant
-  - [ ] Commentaire
-- [ ] Historique des dons sur la fiche donneur
+- [x] Page "Donneurs"
+  - [x] Liste + CRUD
+- [x] Modale "Enregistrer un Don"
+  - [x] Sélectionner source : Élève existant / Donneur existant / Nouveau donneur / Anonyme
+  - [x] Montant
+  - [x] Commentaire
+- [x] Statistiques (Total/Nombre)
 
 ---
 
@@ -298,6 +298,21 @@
 
 ### Backend (Rust)
 - [ ] Commande `get_dashboard_stats()`
+
+---
+
+## 📋 SPRINT 9 : Livraison & Déploiement (Semaine 11)
+*Objectif : Packager et Livrer*
+
+### Build
+- [x] Configuration `tauri.conf.json` (version, bundle)
+- [x] Compilation Backend (Release)
+- [x] Build Frontend
+- [x] Génération installeur Windows (.msi/.exe)
+
+### Documentation User
+- [ ] Manuel Utilisateur (PDF)
+- [ ] Formation simplifiée
   - [ ] Recettes du jour / Semaine / Mois
   - [ ] Nombre d'élèves inscrits
   - [ ] Élèves en retard de paiement (liste)

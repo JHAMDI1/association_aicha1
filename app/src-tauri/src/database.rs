@@ -51,6 +51,21 @@ fn run_migrations(conn: &Connection) -> Result<()> {
     let _ = conn.execute("ALTER TABLE recus ADD COLUMN numero_carnet TEXT", []);
     let _ = conn.execute("ALTER TABLE recus ADD COLUMN numero_recu_physique TEXT", []);
 
+    // Migration 003: Add donneurs table
+    // Force add columns if table exists but migration didn't run fully
+    conn.execute_batch(include_str!("../migrations/003_add_donneurs.sql"))?;
+    
+    // Repair schema for existing table (idempotent)
+    let _ = conn.execute("ALTER TABLE donneurs ADD COLUMN telephone TEXT", []);
+    let _ = conn.execute("ALTER TABLE donneurs ADD COLUMN email TEXT", []);
+    let _ = conn.execute("ALTER TABLE donneurs ADD COLUMN adresse TEXT", []);
+    let _ = conn.execute("ALTER TABLE donneurs ADD COLUMN commentaire TEXT", []);
+
+    // Add donation support columns to recus (idempotent)
+    let _ = conn.execute("ALTER TABLE recus ADD COLUMN source_type TEXT DEFAULT 'ELEVE'", []);
+    let _ = conn.execute("ALTER TABLE recus ADD COLUMN donneur_id TEXT REFERENCES donneurs(id)", []);
+
+
     Ok(())
 }
 

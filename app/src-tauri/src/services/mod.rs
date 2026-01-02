@@ -36,3 +36,9 @@ pub use depenses_service::{
     delete_depense, upload_piece_jointe, get_depenses_stats,
     Depense, DepenseListItem, CreateDepenseRequest, DepenseStats
 };
+
+pub mod donneurs_service;
+pub use donneurs_service::{
+    get_all_donneurs, get_donneur_by_id, create_donneur, update_donneur, delete_donneur, search_donneurs,
+    Donneur, DonneurListItem, CreateDonneurRequest
+};

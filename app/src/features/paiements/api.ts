@@ -19,7 +19,7 @@ export interface MoisStatus {
 }
 
 export interface CreatePaiementRequest {
-    eleve_id: string;
+    eleve_id?: string;
     type_paiement: "MENSUALITE" | "INSCRIPTION" | "ASSURANCE" | "DON";
     mois_payes: number[];  // [9, 10, 11]
     annee: number;
@@ -28,6 +28,8 @@ export interface CreatePaiementRequest {
     commentaire?: string;
     numero_carnet?: string;
     numero_recu_physique?: string;
+    source_type?: "ELEVE" | "DONNEUR" | "ANONYME";
+    donneur_id?: string;
 }
 
 export interface Recu {

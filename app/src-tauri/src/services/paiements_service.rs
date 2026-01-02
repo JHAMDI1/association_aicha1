@@ -27,8 +27,9 @@ pub struct MoisStatus {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+
 pub struct CreateRecuRequest {
-    pub eleve_id: String,
+    pub eleve_id: Option<String>,
     pub type_paiement: String,  // MENSUALITE, INSCRIPTION, ASSURANCE, DON
     pub mois_payes: Vec<i32>,   // [9, 10, 11] for Sept, Oct, Nov
     pub annee: i32,
@@ -37,6 +38,8 @@ pub struct CreateRecuRequest {
     pub commentaire: Option<String>,
     pub numero_carnet: Option<String>,
     pub numero_recu_physique: Option<String>,
+    pub source_type: Option<String>, // "ELEVE", "DONNEUR", "ANONYME"
+    pub donneur_id: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -151,73 +154,77 @@ pub fn get_paiement_status(eleve_id: &str, annee_scolaire: &str) -> Result<Paiem
     })
 }
 
-/// Create a new receipt
+/// Create a new receipt (Payment or Donation)
 pub fn create_recu(request: CreateRecuRequest, user_id: &str) -> Result<RecuDetail, AppError> {
-    println!("[PAYMENT] 🔵 Starting create_recu for eleve_id: {}, type: {}, montant: {}", 
-             request.eleve_id, request.type_paiement, request.montant_total);
+    let source_type = request.source_type.unwrap_or_else(|| "ELEVE".to_string());
+    
+    println!("[PAYMENT] 🔵 Starting create_recu. Source: {}, Type: {}, Montant: {}", 
+             source_type, request.type_paiement, request.montant_total);
+             
     let conn = get_connection();
-    println!("[PAYMENT] ✅ Database connection obtained");
-    
-    // Validate student exists
-    let student_exists: bool = conn.query_row(
-        "SELECT COUNT(*) FROM eleves WHERE id = ? AND deleted_at IS NULL",
-        params![request.eleve_id],
-        |row| row.get::<_, i32>(0).map(|c| c > 0)
-    )?;
-    
-    println!("[PAYMENT] ✅ Student validation: exists = {}", student_exists);
-    if !student_exists {
-        println!("[PAYMENT] ❌ Student not found!");
-        return Err(AppError::NotFound("Élève non trouvé".to_string()));
-    }
-    
-    // Validate no duplicate months
-    println!("[PAYMENT] 🔍 Checking {} months for duplicates", request.mois_payes.len());
-    for &mois in &request.mois_payes {
-        let calendar_year = if mois >= 9 { request.annee } else { request.annee + 1 };
-        
-        let already_paid: bool = conn.query_row(
-            "SELECT COUNT(*) FROM lignes_paiement WHERE eleve_id = ? AND mois = ? AND annee = ?",
-            params![request.eleve_id, mois, calendar_year],
-            |row| row.get::<_, i32>(0).map(|c| c > 0)
-        )?;
-        
-        if already_paid {
-            let mois_nom = match mois {
-                1 => "Janvier", 2 => "Février", 3 => "Mars", 4 => "Avril",
-                5 => "Mai", 6 => "Juin", 7 => "Juillet", 8 => "Août",
-                9 => "Septembre", 10 => "Octobre", 11 => "Novembre", 12 => "Décembre",
-                _ => "Inconnu"
-            };
-            return Err(AppError::ValidationError(
-                format!("Le mois {} {} est déjà payé", mois_nom, calendar_year)
-            ));
+
+    // VALIDATION LOGIC
+    if source_type == "ELEVE" {
+        if let Some(eleve_id) = &request.eleve_id {
+             // Validate student exists
+            let student_exists: bool = conn.query_row(
+                "SELECT COUNT(*) FROM eleves WHERE id = ? AND deleted_at IS NULL",
+                params![eleve_id],
+                |row| row.get::<_, i32>(0).map(|c| c > 0)
+            )?;
+            
+            if !student_exists {
+                return Err(AppError::NotFound("Élève non trouvé".to_string()));
+            }
+
+            // Validate duplicate months ONLY for MENSUALITE
+            if request.type_paiement == "MENSUALITE" {
+                for &mois in &request.mois_payes {
+                    let calendar_year = if mois >= 9 { request.annee } else { request.annee + 1 };
+                    let already_paid: bool = conn.query_row(
+                        "SELECT COUNT(*) FROM lignes_paiement WHERE eleve_id = ? AND mois = ? AND annee = ?",
+                        params![eleve_id, mois, calendar_year],
+                        |row| row.get::<_, i32>(0).map(|c| c > 0)
+                    )?;
+                    if already_paid {
+                        return Err(AppError::ValidationError(format!("Mois {} déjà payé", mois)));
+                    }
+                }
+            }
+        } else {
+            return Err(AppError::ValidationError("ID élève requis pour source ELEVE".to_string()));
+        }
+    } else if source_type == "DONNEUR" {
+        if let Some(donneur_id) = &request.donneur_id {
+             // Validate donor exists
+             let donor_exists: bool = conn.query_row(
+                "SELECT COUNT(*) FROM donneurs WHERE id = ?",
+                params![donneur_id],
+                |row| row.get::<_, i32>(0).map(|c| c > 0)
+            )?;
+            
+            if !donor_exists {
+                return Err(AppError::NotFound("Donneur non trouvé".to_string()));
+            }
+        } else {
+             return Err(AppError::ValidationError("ID donneur requis pour source DONNEUR".to_string()));
         }
     }
-    
+
     // Generate receipt number
     println!("[PAYMENT] 🔢 Generating receipt number");
     let numero = generate_receipt_number(&conn)?;
-    println!("[PAYMENT] ✅ Receipt number: {}", numero);
-    
-    // Use the manual amount from request
-    let montant_total = request.montant_total;
-    
-    // Calculate montant per line if MENSUALITE
-    let montant_unitaire = if request.type_paiement == "MENSUALITE" && request.mois_payes.len() > 0 {
-        montant_total / request.mois_payes.len() as f64
-    } else {
-        montant_total
-    };
     
     // Create receipt
     let recu_id = Uuid::new_v4().to_string();
     let now = Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
-    println!("[PAYMENT] 💾 Inserting receipt into database: id={}, numero={}", recu_id, numero);
+    let montant_total = request.montant_total;
+
+    println!("[PAYMENT] 💾 Inserting receipt: {}", numero);
     
     conn.execute(
-        "INSERT INTO recus (id, numero, date_operation, type_paiement, montant_total, mode_paiement, eleve_id, user_id, etat, commentaire, created_at, numero_carnet, numero_recu_physique)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'VALIDE', ?, ?, ?, ?)",
+        "INSERT INTO recus (id, numero, date_operation, type_paiement, montant_total, mode_paiement, eleve_id, user_id, etat, commentaire, created_at, numero_carnet, numero_recu_physique, source_type, donneur_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'VALIDE', ?, ?, ?, ?, ?, ?)",
         params![
             recu_id,
             numero,
@@ -230,31 +237,30 @@ pub fn create_recu(request: CreateRecuRequest, user_id: &str) -> Result<RecuDeta
             request.commentaire,
             now,
             request.numero_carnet,
-            request.numero_recu_physique
+            request.numero_recu_physique,
+            source_type,
+            request.donneur_id
         ]
     )?;
     
-    // Create payment lines
-    println!("[PAYMENT] ✅ Receipt inserted successfully");
-    println!("[PAYMENT] 📝 Creating {} payment lines", request.mois_payes.len());
-    let mut lignes = Vec::new();
-    for mois in request.mois_payes {
-        let ligne_id = Uuid::new_v4().to_string();
-        let calendar_year = if mois >= 9 { request.annee } else { request.annee + 1 };
-        
-        conn.execute(
-            "INSERT INTO lignes_paiement (id, recu_id, eleve_id, mois, annee, montant)
-             VALUES (?, ?, ?, ?, ?, ?)",
-            params![ligne_id, recu_id, request.eleve_id, mois, calendar_year, montant_unitaire]
-        )?;
-        
-        lignes.push(LignePaiement {
-            id: ligne_id,
-            mois,
-            annee: calendar_year,
-            montant: montant_unitaire,
-        });
+    // Create payment lines (Only for ELEVE payments related to months)
+    if source_type == "ELEVE" && request.type_paiement == "MENSUALITE" && !request.mois_payes.is_empty() {
+        if let Some(eleve_id) = &request.eleve_id {
+            let montant_unitaire = montant_total / request.mois_payes.len() as f64;
+            for mois in &request.mois_payes {
+                let ligne_id = Uuid::new_v4().to_string();
+                let calendar_year = if *mois >= 9 { request.annee } else { request.annee + 1 };
+                
+                conn.execute(
+                    "INSERT INTO lignes_paiement (id, recu_id, eleve_id, mois, annee, montant)
+                     VALUES (?, ?, ?, ?, ?, ?)",
+                    params![ligne_id, recu_id, eleve_id, mois, calendar_year, montant_unitaire]
+                )?;
+            }
+        }
     }
+
+
     
     // Fetch complete receipt details
     println!("[PAYMENT] ✅ All payment lines created");

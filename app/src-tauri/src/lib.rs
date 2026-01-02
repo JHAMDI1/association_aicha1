@@ -14,6 +14,7 @@ use services::enseignants_service::{Enseignant, CreateEnseignantRequest, UpdateE
 use services::classes_service::{Classe, ClasseListItem, CreateClasseRequest, UpdateClasseRequest};
 use services::{PaiementStatus, CreateRecuRequest, RecuDetail, RecuListItem};
 use services::{Depense, DepenseListItem, CreateDepenseRequest, DepenseStats};
+use services::{Donneur, DonneurListItem, CreateDonneurRequest};
 use std::sync::Mutex;
 use once_cell::sync::Lazy;
 
@@ -330,6 +331,40 @@ fn debug_log(message: String) {
     println!("[FRONTEND] {}", message);
 }
 
+// ============================================
+// DONNEURS COMMANDS
+// ============================================
+
+#[tauri::command]
+fn get_donneurs() -> Result<Vec<DonneurListItem>, String> {
+    services::get_all_donneurs().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_donneur(id: String) -> Result<Donneur, String> {
+    services::get_donneur_by_id(&id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn create_donneur(request: CreateDonneurRequest) -> Result<Donneur, String> {
+    services::create_donneur(request).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn update_donneur(id: String, request: services::donneurs_service::UpdateDonneurRequest) -> Result<Donneur, String> {
+    services::update_donneur(&id, request).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn delete_donneur(id: String) -> Result<String, String> {
+    services::delete_donneur(&id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn search_donneurs(query: String) -> Result<Vec<DonneurListItem>, String> {
+    services::search_donneurs(&query).map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Initialize database on startup
@@ -389,6 +424,13 @@ pub fn run() {
             upload_piece_jointe,
             get_depenses_stats,
             debug_log,
+            // Donneurs
+            get_donneurs,
+            get_donneur,
+            create_donneur,
+            update_donneur,
+            delete_donneur,
+            search_donneurs,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

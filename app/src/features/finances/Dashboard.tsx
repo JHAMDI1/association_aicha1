@@ -4,10 +4,11 @@ import { ElevesPage } from "@/features/eleves";
 import { NiveauxPage, EnseignantsPage, ClassesPage } from "@/features/scolarite";
 import { PaiementsPage } from "@/features/paiements";
 import { DepensesPage } from "@/features/depenses";
+import { DonneursPage } from "@/features/dons";
 import { Button } from "@/components/ui/button";
 import logoImage from "@/assets/logo.jpeg";
 
-type Page = "dashboard" | "eleves" | "paiements" | "depenses" | "rapports" | "users" | "classes" | "niveaux" | "enseignants";
+type Page = "dashboard" | "eleves" | "paiements" | "depenses" | "donneurs" | "rapports" | "users" | "classes" | "niveaux" | "enseignants";
 
 export function Dashboard() {
     const { user, logout, isAdmin } = useAuth();
@@ -18,6 +19,7 @@ export function Dashboard() {
         { id: "eleves" as Page, label: "Élèves", icon: "🎓" },
         { id: "paiements" as Page, label: "Paiements", icon: "💳" },
         { id: "depenses" as Page, label: "Dépenses", icon: "💸" },
+        { id: "donneurs" as Page, label: "Donneurs", icon: "🎁" },
 
         // Section Scolarité
         { id: "classes" as Page, label: "Classes", icon: "🏫" },
@@ -98,6 +100,7 @@ export function Dashboard() {
                 {currentPage === "enseignants" && <EnseignantsPage />}
                 {currentPage === "paiements" && <PaiementsPage />}
                 {currentPage === "depenses" && <DepensesPage />}
+                {currentPage === "donneurs" && <DonneursPage />}
                 {currentPage === "rapports" && <PlaceholderPage title="Rapports" icon="📈" />}
                 {currentPage === "users" && <PlaceholderPage title="Utilisateurs" icon="👥" />}
             </main>
