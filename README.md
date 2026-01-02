@@ -127,7 +127,7 @@ L'installeur Windows (`.exe` / `.msi`) sera généré dans `src-tauri/target/rel
 *Développeur Fullstack Passionné*  
 
 [![Portfolio](https://img.shields.io/badge/Portfolio-Visit-blue?style=for-the-badge&logo=wordpress)](https://votre-portfolio.com)
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-blue?style=for-the-badge&logo=linkedin)](https://linkedin.com/in/votre-profil)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-blue?style=for-the-badge&logo=linkedin)](https://www.linkedin.com/in/hamdi-jouini-7aa47828b/)
 
 ---
 
