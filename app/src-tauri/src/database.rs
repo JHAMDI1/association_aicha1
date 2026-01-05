@@ -16,11 +16,32 @@ pub static DB: Lazy<Mutex<Connection>> = Lazy::new(|| {
 
 /// Get the database file path in the app data directory
 fn get_db_path() -> PathBuf {
-    // For development, use current directory
-    // In production, use tauri::api::path::app_data_dir
-    let mut path = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    path.push(&CONFIG.database.filename);
-    path
+    #[cfg(debug_assertions)]
+    {
+        // Dev: Use current dir
+        let mut path = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+        path.push(&CONFIG.database.filename);
+        return path;
+    }
+
+    #[cfg(not(debug_assertions))]
+    {
+        // Prod: Use AppData/Roaming/com.association.aicha
+        if let Ok(appdata) = std::env::var("APPDATA") {
+            let mut path = PathBuf::from(appdata);
+            path.push("com.association.aicha");
+            if let Err(e) = std::fs::create_dir_all(&path) {
+                eprintln!("Failed to create app data directory: {}", e);
+            }
+            path.push(&CONFIG.database.filename);
+            return path;
+        }
+
+        // Fallback
+        let mut path = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+        path.push(&CONFIG.database.filename);
+        path
+    }
 }
 
 /// Initialize the database and run migrations

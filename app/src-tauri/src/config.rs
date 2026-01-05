@@ -105,9 +105,27 @@ pub fn load_config() -> Config {
 
 /// Get the path to config.toml
 fn get_config_path() -> PathBuf {
-    let mut path = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    path.push("config.toml");
-    path
+    #[cfg(debug_assertions)]
+    {
+        let mut path = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+        path.push("config.toml");
+        return path;
+    }
+
+    #[cfg(not(debug_assertions))]
+    {
+        if let Ok(appdata) = std::env::var("APPDATA") {
+            let mut path = PathBuf::from(appdata);
+            path.push("com.association.aicha");
+            let _ = std::fs::create_dir_all(&path); // Ensure exists
+            path.push("config.toml");
+            return path;
+        }
+
+        let mut path = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+        path.push("config.toml");
+        return path;
+    }
 }
 
 /// Create default config file if it doesn't exist

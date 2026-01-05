@@ -13,6 +13,10 @@ import {
 } from "@/components/ui/table";
 import { paiementsApi, type RecuListItem } from "./api";
 import { PaiementModal } from "./PaiementModal";
+import { ExportButton } from "@/components/ExportButton";
+import { exportToCSV } from "@/lib/csvExport";
+import { exportToPDF } from "@/lib/pdfExport";
+import { getLogoBase64 } from "@/lib/logoLoader";
 
 interface PaiementsPageProps {
     initialData?: { eleveId: string, months: number[] } | null;
@@ -75,6 +79,54 @@ export function PaiementsPage({ initialData, onClearInitialData }: PaiementsPage
         return <span className="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-700">{etat}</span>;
     };
 
+    // Exports
+    const getExportData = () => {
+        return recus.map(r => ({
+            ...r,
+            montant_display: r.montant_total.toFixed(2),
+            date_display: formatDate(r.date_operation),
+            eleve_nom_complet: r.eleve_nom || "Externe",
+            carnet_full: r.numero_carnet ? `${r.numero_carnet}/${r.numero_recu_physique}` : "-"
+        }));
+    };
+
+    const exportColumns = [
+        { header: "N° Reçu", dataKey: "numero" },
+        { header: "Carnet / R.Phys", dataKey: "carnet_full" },
+        { header: "Date", dataKey: "date_display" },
+        { header: "Élève / Donneur", dataKey: "eleve_nom_complet" },
+        { header: "Type", dataKey: "type_paiement" },
+        { header: "Montant (DH)", dataKey: "montant_display" },
+        { header: "Statut", dataKey: "etat" },
+    ];
+
+    const handleExportCSV = () => {
+        exportToCSV({
+            filename: `paiements_aicha_${new Date().toISOString().split('T')[0]}`,
+            data: getExportData(),
+            columns: exportColumns
+        });
+    };
+
+    const handleExportPDF = async () => {
+        const logo = await getLogoBase64();
+        const totalAmount = recus.reduce((sum, r) => sum + r.montant_total, 0);
+
+        exportToPDF({
+            filename: `paiements_aicha_${new Date().toISOString().split('T')[0]}.pdf`,
+            title: "Historique des Paiements",
+            subtitle: `Export du ${new Date().toLocaleDateString("fr-FR")} - ${recus.length} reçus`,
+            data: getExportData(),
+            columns: exportColumns,
+            logo: logo || undefined,
+            total: {
+                label: "TOTAL GENERAL",
+                dataKey: "montant_display",
+                value: `${totalAmount.toFixed(2)} DH`
+            }
+        });
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
@@ -84,9 +136,16 @@ export function PaiementsPage({ initialData, onClearInitialData }: PaiementsPage
                         Gérez les paiements des élèves
                     </p>
                 </div>
-                <Button onClick={() => setModalOpen(true)}>
-                    <Plus className="mr-2 h-4 w-4" /> Nouveau Paiement
-                </Button>
+                <div className="flex gap-2">
+                    <ExportButton
+                        onExportCSV={handleExportCSV}
+                        onExportPDF={handleExportPDF}
+                        disabled={recus.length === 0}
+                    />
+                    <Button onClick={() => setModalOpen(true)}>
+                        <Plus className="mr-2 h-4 w-4" /> Nouveau Paiement
+                    </Button>
+                </div>
             </div>
 
             <Card>

@@ -3,6 +3,10 @@ import { elevesApi, EleveListItem } from "./api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { ExportButton } from "@/components/ExportButton";
+import { exportToCSV } from "@/lib/csvExport";
+import { exportToPDF } from "@/lib/pdfExport";
+import { getLogoBase64 } from "@/lib/logoLoader";
 
 interface ElevesListProps {
     onSelectEleve: (id: string) => void;
@@ -37,15 +41,63 @@ export function ElevesList({ onSelectEleve, onAddEleve }: ElevesListProps) {
         loadEleves(search);
     };
 
+    const getExportData = () => {
+        return eleves.map(e => ({
+            ...e,
+            nom_complet: `${e.nom} ${e.prenom}`,
+            paiement_status: e.has_late_payments ? "Retard" : "À jour"
+        }));
+    }
+
+    const exportColumns = [
+        { header: "Matricule", dataKey: "code_matricule" },
+        { header: "Nom", dataKey: "nom" },
+        { header: "Prénom", dataKey: "prenom" },
+        { header: "Classe", dataKey: "classe_nom" },
+        { header: "Niveau", dataKey: "niveau_nom" },
+        { header: "Statut Paiement", dataKey: "paiement_status" },
+    ];
+
+    const handleExportCSV = () => {
+        exportToCSV({
+            filename: `eleves_aicha_${new Date().toISOString().split('T')[0]}`,
+            data: getExportData(),
+            columns: exportColumns
+        });
+    };
+
+    const handleExportPDF = async () => {
+        const logo = await getLogoBase64();
+        exportToPDF({
+            filename: `eleves_aicha_${new Date().toISOString().split('T')[0]}.pdf`,
+            title: "Liste des Élèves",
+            subtitle: `Export du ${new Date().toLocaleDateString("fr-FR")} - ${eleves.length} élèves`,
+            data: getExportData(),
+            columns: exportColumns,
+            logo: logo || undefined
+        });
+    };
+
     return (
         <div className="space-y-4">
             {/* Header */}
             <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-gray-900">Liste des Élèves</h2>
-                <Button onClick={onAddEleve} className="bg-emerald-600 hover:bg-emerald-700">
-                    <span className="mr-2">+</span>
-                    Ajouter un Élève
-                </Button>
+                <div>
+                    <h2 className="text-2xl font-bold text-gray-900">Liste des Élèves</h2>
+                    <p className="text-sm text-muted-foreground">{eleves.length} élèves affichés</p>
+                </div>
+
+                <div className="flex gap-2">
+                    <ExportButton
+                        onExportCSV={handleExportCSV}
+                        onExportPDF={handleExportPDF}
+                        disabled={eleves.length === 0}
+                    />
+                    <Button onClick={onAddEleve} className="bg-emerald-600 hover:bg-emerald-700">
+                        <span className="mr-2">+</span>
+                        Ajouter un Élève
+                    </Button>
+                </div>
             </div>
 
             {/* Search Bar */}
@@ -111,8 +163,8 @@ export function ElevesList({ onSelectEleve, onAddEleve }: ElevesListProps) {
                         <Card
                             key={eleve.id}
                             className={`cursor-pointer hover:shadow-md transition-all border-l-4 ${eleve.has_late_payments
-                                    ? 'bg-red-50 border-l-red-500 hover:bg-red-100'
-                                    : 'bg-green-50 border-l-green-500 hover:bg-green-100'
+                                ? 'bg-red-50 border-l-red-500 hover:bg-red-100'
+                                : 'bg-green-50 border-l-green-500 hover:bg-green-100'
                                 }`}
                             onClick={() => onSelectEleve(eleve.id)}
                         >
@@ -157,13 +209,6 @@ export function ElevesList({ onSelectEleve, onAddEleve }: ElevesListProps) {
                         </Card>
                     ))}
                 </div>
-            )}
-
-            {/* Stats */}
-            {!isLoading && eleves.length > 0 && (
-                <p className="text-sm text-gray-500 text-center">
-                    {eleves.length} élève{eleves.length > 1 ? "s" : ""} trouvé{eleves.length > 1 ? "s" : ""}
-                </p>
             )}
         </div>
     );

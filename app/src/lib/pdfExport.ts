@@ -7,6 +7,12 @@ export interface PDFExportOptions {
     data: any[];
     columns: { header: string; dataKey: string }[];
     filename: string;
+    logo?: string; // Base64 string
+    total?: {
+        label: string;
+        dataKey: string; // Column key to place the total value
+        value: string | number;
+    };
 }
 
 export function exportToPDF(options: PDFExportOptions) {
@@ -15,22 +21,36 @@ export function exportToPDF(options: PDFExportOptions) {
     // Create new PDF document
     const doc = new jsPDF();
 
-    // Add title
+    // Add logo if provided
+    if (options.logo) {
+        // Logo dimensions
+        const logoWidth = 25;
+        const logoHeight = 25;
+        try {
+            doc.addImage(options.logo, "PNG", 14, 15, logoWidth, logoHeight);
+        } catch (e) {
+            console.warn("Could not add logo to PDF", e);
+        }
+    }
+
+    // Add title (adjusted Y position if logo exists)
+    const titleY = options.logo ? 25 : 20;
     doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
-    doc.text(title, 14, 20);
+    // Indent title if logo is present
+    doc.text(title, options.logo ? 45 : 14, titleY);
 
     // Add subtitle if provided
     if (subtitle) {
         doc.setFontSize(11);
         doc.setFont("helvetica", "normal");
         doc.setTextColor(100);
-        doc.text(subtitle, 14, 28);
+        doc.text(subtitle, options.logo ? 45 : 14, titleY + 8);
     }
 
     // Add table
     autoTable(doc, {
-        startY: subtitle ? 35 : 28,
+        startY: subtitle ? (options.logo ? 45 : 35) : (options.logo ? 40 : 28),
         head: [columns.map((col) => col.header)],
         body: data.map((row) => columns.map((col) => row[col.dataKey] || "-")),
         styles: {
@@ -45,6 +65,20 @@ export function exportToPDF(options: PDFExportOptions) {
         alternateRowStyles: {
             fillColor: [243, 244, 246], // Gray-100
         },
+        // Calculate Total if requested
+
+        foot: options.total ? [
+            columns.map((col, index) => {
+                if (index === 0) return options.total?.label || "Total";
+                if (col.dataKey === options.total?.dataKey) return options.total?.value || "";
+                return "";
+            })
+        ] : undefined,
+        footStyles: {
+            fillColor: [243, 244, 246],
+            textColor: 0,
+            fontStyle: "bold"
+        }
     });
 
     // Add footer

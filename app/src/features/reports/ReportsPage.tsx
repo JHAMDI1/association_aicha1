@@ -8,6 +8,7 @@ import { Label } from "../../components/ui/label";
 import { toast } from "sonner";
 import { Download, FileText } from "lucide-react";
 import { exportToPDF } from "../../lib/pdfExport";
+import { getLogoBase64 } from "../../lib/logoLoader";
 
 type ReportType = "recettes" | "depenses" | "bilan" | "retards" | "inscriptions";
 
@@ -117,13 +118,19 @@ export function ReportsPage() {
         toast.success("Fichier CSV téléchargé");
     };
 
-    const handleDownloadPDF = () => {
+    const handleDownloadPDF = async () => {
         if (!reportData) return;
+        const logo = await getLogoBase64();
+
+        const commonOptions = { logo: logo || undefined };
 
         switch (reportType) {
             case "recettes":
                 exportToPDF({
+                    ...commonOptions,
                     title: "Rapport des Recettes",
+                    // ... rest of the code is handled in next chunks or stays same (wait, careful with overwrite)
+
                     subtitle: `P\u00e9riode: ${dateDebut} au ${dateFin}`,
                     data: (reportData as RecettesReport).details.map(r => ({
                         date: r.date.split("T")[0],
@@ -140,6 +147,11 @@ export function ReportsPage() {
                         { header: "Mode", dataKey: "mode" },
                     ],
                     filename: `recettes_${dateDebut}_${dateFin}.pdf`,
+                    total: {
+                        label: "TOTAL PÉRIODE",
+                        dataKey: "montant",
+                        value: `${(reportData as RecettesReport).total.toFixed(2)} DH`
+                    }
                 });
                 break;
 
@@ -160,6 +172,11 @@ export function ReportsPage() {
                         { header: "B\u00e9n\u00e9ficiaire", dataKey: "beneficiaire" },
                     ],
                     filename: `depenses_${dateDebut}_${dateFin}.pdf`,
+                    total: {
+                        label: "TOTAL PÉRIODE",
+                        dataKey: "montant",
+                        value: `${(reportData as DepensesReport).total.toFixed(2)} DH`
+                    }
                 });
                 break;
 

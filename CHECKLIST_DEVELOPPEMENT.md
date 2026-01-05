@@ -151,7 +151,7 @@
     - [x] Tuteur : Nom, Téléphone, CIN
     - [x] Adresse
   - [x] Onglet Finances : Intégration Calendrier interactif + Paiement rapide
-  - [ ] Onglet Scolarité : Classe actuelle
+  - [x] Onglet Scolarité : Classe actuelle
 - [x] Confirmation avant suppression
 
 ### Upload de photos
@@ -170,8 +170,8 @@
 - [x] CRUD `classes`
   - [x] Associer un niveau
   - [x] Associer un enseignant principal (optionnel)
-- [ ] CRUD `inscriptions`
-  - [ ] Associer un élève à une classe pour une année scolaire
+- [x] CRUD `inscriptions`
+  - [x] Associer un élève à une classe pour une année scolaire
 
 ### Frontend (React)
 - [x] Page "Paramètres > Niveaux"
@@ -181,11 +181,11 @@
 - [x] Page "Classes"
   - [x] Vue en grille (Cards) ou Tableau -> (Choix: Tableau)
   - [x] Afficher le nombre d'élèves par classe (Backend count)
-  - [ ] Lien vers le détail de la classe (Prochain Sprint Inscriptions)
-- [ ] Page "Détail Classe"
-  - [ ] Liste des élèves inscrits
-  - [ ] Bouton "Inscrire un élève" (Modale avec recherche)
-  - [ ] Bouton "Retirer de la classe"
+  - [x] Lien vers le détail de la classe (Mode Liste Élèves)
+- [x] Page "Détail Classe" (via Modal)
+  - [x] Liste des élèves inscrits
+  - [x] Bouton "Inscrire un élève" (Modale avec recherche)
+  - [x] Bouton "Retirer de la classe"
 
 ---
 

@@ -27,6 +27,10 @@ import { depensesApi, type DepenseListItem, type DepenseStats } from "./api";
 import { DepenseModal } from "./DepenseModal";
 import { DepenseDetailModal } from "./DepenseDetailModal";
 import { useAuth } from "@/features/auth/AuthContext";
+import { ExportButton } from "@/components/ExportButton";
+import { exportToCSV } from "@/lib/csvExport";
+import { exportToPDF } from "@/lib/pdfExport";
+import { getLogoBase64 } from "@/lib/logoLoader";
 
 export function DepensesPage() {
     const { user } = useAuth();
@@ -136,6 +140,54 @@ export function DepensesPage() {
         );
     };
 
+    // Exports
+    const getExportData = () => {
+        return depenses.map(d => ({
+            ...d,
+            montant_display: d.montant.toFixed(2),
+            date_display: formatDate(d.date_operation),
+            beneficiaire: d.beneficiaire || "-",
+            motif: d.motif || "-",
+        }));
+    };
+
+    const exportColumns = [
+        { header: "N°", dataKey: "numero" },
+        { header: "Date", dataKey: "date_display" },
+        { header: "Bénéficiaire", dataKey: "beneficiaire" },
+        { header: "Motif", dataKey: "motif" },
+        { header: "Type", dataKey: "type_depense" },
+        { header: "Montant (DH)", dataKey: "montant_display" },
+        { header: "Statut", dataKey: "etat" },
+    ];
+
+    const handleExportCSV = () => {
+        exportToCSV({
+            filename: `depenses_aicha_${new Date().toISOString().split('T')[0]}`,
+            data: getExportData(),
+            columns: exportColumns
+        });
+    };
+
+    const handleExportPDF = async () => {
+        const logo = await getLogoBase64();
+        const totalAmount = depenses.reduce((sum, d) => sum + d.montant, 0);
+
+        exportToPDF({
+            filename: `depenses_aicha_${new Date().toISOString().split('T')[0]}.pdf`,
+            title: "Liste des Dépenses",
+            subtitle: `Export du ${new Date().toLocaleDateString("fr-FR")} - ${depenses.length} dépenses`,
+            data: getExportData(),
+            columns: exportColumns,
+            logo: logo || undefined,
+            total: {
+                label: "TOTAL",
+                dataKey: "montant_display",
+                value: `${totalAmount.toFixed(2)} DH`
+            }
+        });
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
@@ -145,9 +197,16 @@ export function DepensesPage() {
                         Gérez les ordres de paiement et factures
                     </p>
                 </div>
-                <Button onClick={() => setModalOpen(true)}>
-                    <Plus className="mr-2 h-4 w-4" /> Nouvelle Dépense
-                </Button>
+                <div className="flex gap-2">
+                    <ExportButton
+                        onExportCSV={handleExportCSV}
+                        onExportPDF={handleExportPDF}
+                        disabled={depenses.length === 0}
+                    />
+                    <Button onClick={() => setModalOpen(true)}>
+                        <Plus className="mr-2 h-4 w-4" /> Nouvelle Dépense
+                    </Button>
+                </div>
             </div>
 
             {/* Stats Cards */}
