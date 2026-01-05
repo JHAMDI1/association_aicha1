@@ -15,6 +15,10 @@ use services::classes_service::{Classe, ClasseListItem, CreateClasseRequest, Upd
 use services::{PaiementStatus, CreateRecuRequest, RecuDetail, RecuListItem};
 use services::{Depense, DepenseListItem, CreateDepenseRequest, DepenseStats};
 use services::{Donneur, DonneurListItem, CreateDonneurRequest};
+use services::{MessageListItem, CreateMessageRequest};
+use services::{UserPermission, UpdatePermissionsRequest};
+use services::{DashboardStats, LatePaymentStudent};
+use services::{RecettesReport, DepensesReport, BilanReport, InscriptionItem};
 use std::sync::Mutex;
 use once_cell::sync::Lazy;
 
@@ -365,6 +369,145 @@ fn search_donneurs(query: String) -> Result<Vec<DonneurListItem>, String> {
     services::search_donneurs(&query).map_err(|e| e.to_string())
 }
 
+// ============================================
+// MESSAGES COMMANDS
+// ============================================
+
+#[tauri::command]
+fn send_message(request: CreateMessageRequest) -> Result<MessageListItem, String> {
+    let session = CURRENT_USER.lock().unwrap();
+    let user_id = session.as_ref()
+        .map(|u| u.id.clone())
+        .ok_or_else(|| "Non authentifié".to_string())?;
+    
+    services::create_message(request, &user_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_my_messages() -> Result<Vec<MessageListItem>, String> {
+    let session = CURRENT_USER.lock().unwrap();
+    let user_id = session.as_ref()
+        .map(|u| u.id.clone())
+        .ok_or_else(|| "Non authentifié".to_string())?;
+    
+    services::get_messages_received(&user_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_unread_count() -> Result<i32, String> {
+    let session = CURRENT_USER.lock().unwrap();
+    let user_id = session.as_ref()
+        .map(|u| u.id.clone())
+        .ok_or_else(|| "Non authentifié".to_string())?;
+    
+    services::get_unread_count(&user_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn mark_message_read(message_id: String) -> Result<(), String> {
+    let session = CURRENT_USER.lock().unwrap();
+    let user_id = session.as_ref()
+        .map(|u| u.id.clone())
+        .ok_or_else(|| "Non authentifié".to_string())?;
+    
+    services::mark_as_read(&message_id, &user_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn delete_message(message_id: String) -> Result<(), String> {
+    let session = CURRENT_USER.lock().unwrap();
+    let user_id = session.as_ref()
+        .map(|u| u.id.clone())
+        .ok_or_else(|| "Non authentifié".to_string())?;
+    
+    services::delete_message(&message_id, &user_id).map_err(|e| e.to_string())
+}
+
+// ============================================
+// PERMISSIONS COMMANDS
+// ============================================
+
+#[tauri::command]
+fn get_user_permissions(user_id: String) -> Result<Vec<UserPermission>, String> {
+    services::get_user_permissions(&user_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn update_user_permissions(user_id: String, request: UpdatePermissionsRequest) -> Result<(), String> {
+    // Verify caller is admin
+    let session = CURRENT_USER.lock().unwrap();
+    let caller = session.as_ref()
+        .ok_or_else(|| "Non authentifié".to_string())?;
+    
+    if caller.role != UserRole::Admin {
+        return Err("Seul un administrateur peut modifier les permissions".to_string());
+    }
+    
+    services::update_user_permissions(&user_id, request.permissions).map_err(|e| e.to_string())
+}
+
+// ============================================
+// DASHBOARD COMMANDS
+// ============================================
+
+#[tauri::command]
+fn get_dashboard_stats() -> Result<DashboardStats, String> {
+    services::get_dashboard_stats().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_late_payment_students() -> Result<Vec<LatePaymentStudent>, String> {
+    services::get_late_payment_students().map_err(|e| e.to_string())
+}
+
+// ============================================
+// REPORTS COMMANDS
+// ============================================
+
+#[tauri::command]
+fn generate_recettes_report(date_debut: String, date_fin: String) -> Result<RecettesReport, String> {
+    services::generate_recettes_report(&date_debut, &date_fin).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn generate_depenses_report(date_debut: String, date_fin: String) -> Result<DepensesReport, String> {
+    services::generate_depenses_report(&date_debut, &date_fin).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn generate_bilan_report(date_debut: String, date_fin: String) -> Result<BilanReport, String> {
+    services::generate_bilan_report(&date_debut, &date_fin).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn generate_retards_report() -> Result<Vec<services::LatePaymentStudent>, String> {
+    services::get_late_payment_students().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn generate_inscriptions_report() -> Result<Vec<InscriptionItem>, String> {
+    services::generate_inscriptions_report().map_err(|e| e.to_string())
+}
+
+// ============================================
+// BACKUP COMMANDS
+// ============================================
+
+#[tauri::command]
+fn backup_database_to_file(backup_path: String) -> Result<(), String> {
+    services::backup_database(&backup_path).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn restore_database_from_file(backup_path: String) -> Result<(), String> {
+    services::restore_database(&backup_path).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn populate_test_data_command() -> Result<(), String> {
+    services::populate_test_data().map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Initialize database on startup
@@ -431,8 +574,30 @@ pub fn run() {
             update_donneur,
             delete_donneur,
             search_donneurs,
+            // Messages
+            send_message,
+            get_my_messages,
+            get_unread_count,
+            mark_message_read,
+            delete_message,
+            // Permissions
+            get_user_permissions,
+            update_user_permissions,
+            // Dashboard
+            get_dashboard_stats,
+            get_late_payment_students,
+            // Reports
+            generate_recettes_report,
+            generate_depenses_report,
+            generate_bilan_report,
+            generate_retards_report,
+            generate_inscriptions_report,
+            // Backup
+            backup_database_to_file,
+            restore_database_from_file,
+            // Test Data
+            populate_test_data_command,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
-

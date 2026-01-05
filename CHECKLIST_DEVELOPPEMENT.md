@@ -274,30 +274,45 @@
 
 ---
 
-## 📋 SPRINT 7 : Messagerie Interne (Semaine 9)
+## 📋 SPRINT 7 : Messagerie Interne (Semaine 9) ✅
 *Objectif : Communication Admin <-> Secrétaire*
 
 ### Backend (Rust)
-- [ ] CRUD `messages`
-  - [ ] Expéditeur, Destinataire, Contenu, Vu, Date
-- [ ] Commande `get_unread_count(user_id)`
+- [x] CRUD `messages`
+  - [x] Expéditeur, Destinataire, Contenu, Vu, Date
+- [x] Commande `get_unread_count(user_id)`
 
 ### Frontend (React)
-- [ ] Icône Notifications dans le Header (Badge count)
-- [ ] Page "Messages"
-  - [ ] Liste des messages reçus
-  - [ ] Marquage "Lu" au clic
-- [ ] Modale "Nouveau Message"
-  - [ ] Destinataire (Select utilisateur)
-  - [ ] Contenu
+- [x] Icône Notifications dans le Header (Badge count)
+- [x] Page "Messages"
+  - [x] Liste des messages reçus
+  - [x] Marquage "Lu" au clic
+- [x] Modale "Nouveau Message"
+  - [x] Destinataire (Select utilisateur)
+  - [x] Contenu
+
+### Bonus : Gestion Utilisateurs & Permissions
+- [x] CRUD Utilisateurs (Admin only)
+- [x] Permissions granulaires par module (READ/WRITE/VALIDATE)
+- [x] UI de gestion des permissions
 
 ---
 
-## 📋 SPRINT 8 : Dashboard & Statistiques (Semaine 10)
+## 📋 SPRINT 8 : Dashboard & Statistiques (Semaine 10) ✅
 *Objectif : Vue d'ensemble pour l'Admin*
 
 ### Backend (Rust)
-- [ ] Commande `get_dashboard_stats()`
+- [x] Service `dashboard_service.rs`
+  - [x] Calcul KPIs financiers (recettes, dépenses, solde, dons)
+  - [x] Comptage élèves actifs
+  - [x] Détection retards de paiement
+- [x] Commandes `get_dashboard_stats()` et `get_late_payment_students()`
+
+### Frontend (React)
+- [x] Page Dashboard (Home)
+  - [x] 5 Cards KPIs : Recettes, Dépenses, Solde, Élèves, Retards
+  - [x] Tableau Élèves en retard (Top 20)
+  - [x] Quick Actions (Paiements, Dépenses, Élèves, Messages)
 
 ---
 
@@ -311,72 +326,49 @@
 - [x] Génération installeur Windows (.msi/.exe)
 
 ### Documentation User
-- [ ] Manuel Utilisateur (PDF)
-- [ ] Formation simplifiée
-  - [ ] Recettes du jour / Semaine / Mois
-  - [ ] Nombre d'élèves inscrits
-  - [ ] Élèves en retard de paiement (liste)
+- [x] Manuel Utilisateur (Markdown)
+- [x] Formation simplifiée
+  - [x] KPIs financiers (Dashboard)
+  - [x] Nombre d'élèves inscrits  
+  - [x] Élèves en retard de paiement (liste)
 
-### Frontend (React)
-- [ ] Page Dashboard (Home)
-  - [ ] Cards KPIs : Recettes, Élèves, Alertes
-  - [ ] Graphique simple (Recettes sur 7 jours)
-  - [ ] Liste "Retards de paiement" (Top 10)
-  - [ ] Fil d'activité récente
+
 
 ---
 
-## 📋 SPRINT 8.5 : Rapports & Génération de Documents (Semaine 10-11)
-*Objectif : Générer des rapports PDF/Excel avec sélection de plage de dates*
+## 📋 SPRINT 8.5 : Rapports & Génération de Documents ✅
+*Objectif : Générer des rapports avec sélection de plage de dates*
 
 ### Backend (Rust)
-- [ ] Commande `generate_report(type, date_debut, date_fin, format)`
-  - [ ] Types de rapports :
-    - [ ] `RECETTES` : Tous les paiements reçus sur la période
-    - [ ] `DEPENSES` : Toutes les dépenses validées
-    - [ ] `BILAN` : Recettes - Dépenses (Solde)
-    - [ ] `RETARDS` : Liste des élèves avec mois impayés
-    - [ ] `INSCRIPTIONS` : Élèves inscrits par classe/niveau
-  - [ ] Formats supportés :
-    - [ ] PDF (pour impression/archives)
-    - [ ] Excel (.xlsx) (pour comptabilité externe)
-- [ ] Commande `get_report_preview(type, date_debut, date_fin)`
-  - [ ] Retourne les données brutes (JSON) pour prévisualisation avant export
-- [ ] Logique de calcul
-  - [ ] Totaux par mois, par niveau, par type de paiement
-  - [ ] Comparaison avec période précédente (optionnel)
+- [x] 5 Types de rapports implémentés :
+  - [x] `RECETTES` : Tous les paiements reçus sur la période
+  - [x] `DEPENSES` : Toutes les dépenses validées
+  - [x] `BILAN` : Recettes - Dépenses (Solde)
+  - [x] `RETARDS` : Liste des élèves avec mois impayés
+  - [x] `INSCRIPTIONS` : Élèves inscrits par classe
+- [x] Commandes Tauri pour chaque type de rapport
+- [x] Filtrage par plage de dates (pour Recettes, Dépenses, Bilan)
 
 ### Frontend (React)
-- [ ] Page "Rapports"
-  - [ ] Sélecteur de type de rapport (Dropdown)
-  - [ ] **Sélection de plage de dates** (Date Picker Range)
-    - [ ] Présets : "Ce mois", "Mois dernier", "Cette année scolaire", "Personnalisé"
-    - [ ] Date début + Date fin (calendrier)
-  - [ ] Bouton "Prévisualiser"
-  - [ ] Aperçu des données (Tableau récapitulatif)
-  - [ ] Boutons "Télécharger PDF" / "Télécharger Excel"
-- [ ] Composant `<DateRangePicker>`
-  - [ ] Intégration Shadcn Calendar
-  - [ ] Validation (date fin >= date début)
-  - [ ] Format d'affichage localisé (JJ/MM/AAAA)
-- [ ] Génération PDF côté client
-  - [ ] En-tête avec logo Association Aicha
-  - [ ] Tableau des données
-  - [ ] Pied de page (date génération, page X/Y)
-- [ ] Historique des rapports générés (optionnel)
-  - [ ] Liste des derniers rapports avec lien de re-téléchargement
+- [x] Page "Rapports"
+  - [x] Sélecteur de type de rapport (Dropdown avec 5 types)
+  - [x] **Sélection de plage de dates** (Date inputs)
+    - [x] Présets : "Ce mois", "Mois dernier", "Année scolaire"
+    - [x] Date début + Date fin
+  - [x] Bouton "Générer le rapport"
+  - [x] Prévisualisation tableau dynamique
+  - [x] **Export CSV** (compatible Excel/LibreOffice/Sheets)
 
-### Rapports Spécifiques
-- [ ] **Rapport Mensuel de Trésorerie**
-  - [ ] Résumé : Total Recettes, Total Dépenses, Solde
-  - [ ] Détail par catégorie
-  - [ ] Graphique camembert (Répartition)
-- [ ] **Rapport Élèves en Retard**
-  - [ ] Tableau : Nom, Classe, Mois impayés, Total dû
-  - [ ] Option "Envoyer rappel" (futur)
-- [ ] **Attestation de Paiement (individuelle)**
-  - [ ] Pour un élève précis sur une période
-  - [ ] Document officiel avec signature numérique (optionnel)
+### Version Simplifiée (CSV au lieu de PDF/Excel)
+> Note : L'implémentation actuelle utilise CSV pour rapidité et simplicité.
+> CSV est compatible avec Excel/LibreOffice et suffit pour les besoins comptables de base.
+
+### Fonctionnalités Non Implémentées (Optionnelles Future)
+- [ ] PDF avec en-tête/logo/pied de page
+- [ ] Export Excel (.xlsx)
+- [ ] Graphiques camembert
+- [ ] Attestations individuelles
+- [ ] Historique rapports générés
 
 ## 📋 SPRINT 9 : Exports & Backup (Semaine 11)
 *Objectif : Sauvegarder et exporter les données*

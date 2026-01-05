@@ -139,6 +139,9 @@ pub fn create_user(req: CreateUserRequest) -> Result<UserPublic, AppError> {
         rusqlite::params![id, req.nom, req.prenom, req.email, password_hash, req.role.as_str()]
     )?;
     
+    // Initialize default permissions
+    crate::services::permissions_service::init_default_permissions(&id, req.role.as_str())?;
+    
     get_user_by_id(&id)
 }
 

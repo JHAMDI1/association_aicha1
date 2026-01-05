@@ -42,3 +42,34 @@ pub use donneurs_service::{
     get_all_donneurs, get_donneur_by_id, create_donneur, update_donneur, delete_donneur, search_donneurs,
     Donneur, DonneurListItem, CreateDonneurRequest
 };
+
+pub mod messages_service;
+pub use messages_service::{
+    create_message, get_messages_received, get_unread_count, mark_as_read, delete_message,
+    MessageListItem, CreateMessageRequest
+};
+
+pub mod permissions_service;
+pub use permissions_service::{
+    get_user_permissions, update_user_permissions, check_permission, init_default_permissions,
+    UserPermission, UpdatePermissionsRequest
+};
+
+pub mod dashboard_service;
+pub use dashboard_service::{
+    get_dashboard_stats, get_late_payment_students,
+    DashboardStats, LatePaymentStudent
+};
+
+pub mod reports_service;
+pub use reports_service::{
+    generate_recettes_report, generate_depenses_report, generate_bilan_report, 
+    generate_inscriptions_report,
+    RecettesReport, DepensesReport, BilanReport, InscriptionItem
+};
+
+pub mod backup_service;
+pub use backup_service::{backup_database, restore_database};
+
+pub mod seed_service;
+pub use seed_service::populate_test_data;

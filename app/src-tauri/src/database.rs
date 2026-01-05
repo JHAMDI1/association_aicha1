@@ -65,6 +65,8 @@ fn run_migrations(conn: &Connection) -> Result<()> {
     let _ = conn.execute("ALTER TABLE recus ADD COLUMN source_type TEXT DEFAULT 'ELEVE'", []);
     let _ = conn.execute("ALTER TABLE recus ADD COLUMN donneur_id TEXT REFERENCES donneurs(id)", []);
 
+    // Migration 004: User Permissions
+    conn.execute_batch(include_str!("../migrations/004_user_permissions.sql"))?;
 
     Ok(())
 }

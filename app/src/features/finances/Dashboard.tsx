@@ -1,14 +1,20 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/features/auth";
 import { ElevesPage } from "@/features/eleves";
 import { NiveauxPage, EnseignantsPage, ClassesPage } from "@/features/scolarite";
 import { PaiementsPage } from "@/features/paiements";
 import { DepensesPage } from "@/features/depenses";
 import { DonneursPage } from "@/features/dons";
+import { MessagesPage } from "@/features/messages";
+import { UsersPage } from "@/features/users";
+import { ReportsPage } from "@/features/reports";
+import { BackupPage } from "@/features/backup";
 import { Button } from "@/components/ui/button";
+import { NotificationBadge } from "@/components/NotificationBadge";
+import { invoke } from "@tauri-apps/api/core";
 import logoImage from "@/assets/logo.jpeg";
 
-type Page = "dashboard" | "eleves" | "paiements" | "depenses" | "donneurs" | "rapports" | "users" | "classes" | "niveaux" | "enseignants";
+type Page = "dashboard" | "eleves" | "paiements" | "depenses" | "donneurs" | "messages" | "rapports" | "users" | "classes" | "niveaux" | "enseignants" | "settings";
 
 export function Dashboard() {
     const { user, logout, isAdmin } = useAuth();
@@ -20,6 +26,7 @@ export function Dashboard() {
         { id: "paiements" as Page, label: "Paiements", icon: "💳" },
         { id: "depenses" as Page, label: "Dépenses", icon: "💸" },
         { id: "donneurs" as Page, label: "Donneurs", icon: "🎁" },
+        { id: "messages" as Page, label: "Messages", icon: "💬" },
 
         // Section Scolarité
         { id: "classes" as Page, label: "Classes", icon: "🏫" },
@@ -28,6 +35,7 @@ export function Dashboard() {
 
         { id: "rapports" as Page, label: "Rapports", icon: "📈" },
         ...(isAdmin ? [{ id: "users" as Page, label: "Utilisateurs", icon: "👥" }] : []),
+        ...(isAdmin ? [{ id: "settings" as Page, label: "Paramètres", icon: "⚙️" }] : []),
     ];
 
     return (
@@ -89,6 +97,10 @@ export function Dashboard() {
                         Déconnexion
                     </Button>
                 </div>
+                {/* Notification Badge */}
+                <div className="px-4 pb-2">
+                    <NotificationBadge onClick={() => setCurrentPage("messages")} />
+                </div>
             </aside>
 
             {/* Main Content */}
@@ -101,37 +113,62 @@ export function Dashboard() {
                 {currentPage === "paiements" && <PaiementsPage />}
                 {currentPage === "depenses" && <DepensesPage />}
                 {currentPage === "donneurs" && <DonneursPage />}
-                {currentPage === "rapports" && <PlaceholderPage title="Rapports" icon="📈" />}
-                {currentPage === "users" && <PlaceholderPage title="Utilisateurs" icon="👥" />}
+                {currentPage === "messages" && <MessagesPage />}
+                {currentPage === "users" && <UsersPage />}
+                {currentPage === "rapports" && <ReportsPage />}
+                {currentPage === "settings" && <BackupPage />}
             </main>
         </div>
     );
 }
 
 function DashboardHome({ onNavigate }: { onNavigate: (page: Page) => void }) {
+    const [stats, setStats] = useState<any>(null);
+    const [lateStudents, setLateStudents] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        loadDashboard();
+    }, []);
+
+    const loadDashboard = async () => {
+        try {
+            setLoading(true);
+            const [statsData, lateData] = await Promise.all([
+                invoke("get_dashboard_stats"),
+                invoke("get_late_payment_students"),
+            ]);
+            setStats(statsData);
+            setLateStudents(lateData as any[]);
+        } catch (error) {
+            console.error("Dashboard error:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="p-6 flex items-center justify-center min-h-full">
+                <p className="text-gray-500">Chargement du tableau de bord...</p>
+            </div>
+        );
+    }
+
     return (
         <div className="p-6">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Tableau de bord</h2>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+                {/* Recettes */}
                 <div className="bg-white rounded-xl shadow-sm p-6 border">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-gray-500">Élèves inscrits</p>
-                            <p className="text-2xl font-bold text-gray-900">--</p>
-                        </div>
-                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                            <span className="text-xl">🎓</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-white rounded-xl shadow-sm p-6 border">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm text-gray-500">Recettes du mois</p>
-                            <p className="text-2xl font-bold text-emerald-600">-- DH</p>
+                            <p className="text-sm text-gray-500">Recettes</p>
+                            <p className="text-2xl font-bold text-emerald-600">
+                                {stats?.total_recettes?.toFixed(2) || 0} DH
+                            </p>
                         </div>
                         <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center">
                             <span className="text-xl">💰</span>
@@ -139,26 +176,62 @@ function DashboardHome({ onNavigate }: { onNavigate: (page: Page) => void }) {
                     </div>
                 </div>
 
+                {/* Dépenses */}
                 <div className="bg-white rounded-xl shadow-sm p-6 border">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-gray-500">Retards de paiement</p>
-                            <p className="text-2xl font-bold text-orange-600">--</p>
+                            <p className="text-sm text-gray-500">Dépenses</p>
+                            <p className="text-2xl font-bold text-red-600">
+                                {stats?.total_depenses?.toFixed(2) || 0} DH
+                            </p>
                         </div>
-                        <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
-                            <span className="text-xl">⚠️</span>
+                        <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                            <span className="text-xl">💸</span>
                         </div>
                     </div>
                 </div>
 
+                {/* Solde */}
                 <div className="bg-white rounded-xl shadow-sm p-6 border">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-gray-500">Messages non lus</p>
-                            <p className="text-2xl font-bold text-purple-600">--</p>
+                            <p className="text-sm text-gray-500">Solde</p>
+                            <p className={`text-2xl font-bold ${stats?.solde >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                                {stats?.solde?.toFixed(2) || 0} DH
+                            </p>
+                        </div>
+                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                            <span className="text-xl">💵</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Élèves */}
+                <div className="bg-white rounded-xl shadow-sm p-6 border">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm text-gray-500">Élèves</p>
+                            <p className="text-2xl font-bold text-gray-900">
+                                {stats?.total_eleves || 0}
+                            </p>
                         </div>
                         <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                            <span className="text-xl">✉️</span>
+                            <span className="text-xl">🎓</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Retards */}
+                <div className="bg-white rounded-xl shadow-sm p-6 border">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm text-gray-500">Retards</p>
+                            <p className="text-2xl font-bold text-orange-600">
+                                {stats?.eleves_en_retard_count || 0}
+                            </p>
+                        </div>
+                        <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                            <span className="text-xl">⚠️</span>
                         </div>
                     </div>
                 </div>
@@ -166,13 +239,21 @@ function DashboardHome({ onNavigate }: { onNavigate: (page: Page) => void }) {
 
             {/* Quick Actions */}
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Actions rapides</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                 <Button
                     className="h-20 bg-emerald-600 hover:bg-emerald-700"
                     onClick={() => onNavigate("paiements")}
                 >
                     <span className="text-lg mr-2">💳</span>
-                    Nouveau Paiement
+                    Paiements
+                </Button>
+                <Button
+                    variant="outline"
+                    className="h-20"
+                    onClick={() => onNavigate("depenses")}
+                >
+                    <span className="text-lg mr-2">💸</span>
+                    Dépenses
                 </Button>
                 <Button
                     variant="outline"
@@ -180,41 +261,54 @@ function DashboardHome({ onNavigate }: { onNavigate: (page: Page) => void }) {
                     onClick={() => onNavigate("eleves")}
                 >
                     <span className="text-lg mr-2">👤</span>
-                    Ajouter un Élève
+                    Élèves
                 </Button>
                 <Button
                     variant="outline"
                     className="h-20"
-                    onClick={() => onNavigate("rapports")}
+                    onClick={() => onNavigate("messages")}
                 >
-                    <span className="text-lg mr-2">📊</span>
-                    Générer un Rapport
+                    <span className="text-lg mr-2">✉️</span>
+                    Messages
                 </Button>
             </div>
 
-            {/* Recent Activity */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Late Payments Table */}
+            {lateStudents.length > 0 && (
                 <div className="bg-white rounded-xl shadow-sm p-6 border">
-                    <h3 className="font-semibold text-gray-900 mb-4">Activité récente</h3>
-                    <p className="text-gray-500 text-sm">Aucune activité pour le moment.</p>
+                    <h3 className="font-semibold text-gray-900 mb-4">
+                        Élèves en retard de paiement ({lateStudents.length})
+                    </h3>
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead>
+                                <tr className="border-b">
+                                    <th className="text-left pb-2 text-sm font-medium text-gray-500">Nom</th>
+                                    <th className="text-left pb-2 text-sm font-medium text-gray-500">Prénom</th>
+                                    <th className="text-left pb-2 text-sm font-medium text-gray-500">Classe</th>
+                                    <th className="text-right pb-2 text-sm font-medium text-gray-500">Mois impayés</th>
+                                    <th className="text-right pb-2 text-sm font-medium text-gray-500">Montant dû</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {lateStudents.map((student: any) => (
+                                    <tr key={student.id} className="border-b last:border-0 hover:bg-gray-50">
+                                        <td className="py-3">{student.nom}</td>
+                                        <td className="py-3">{student.prenom}</td>
+                                        <td className="py-3 text-gray-600">{student.classe}</td>
+                                        <td className="py-3 text-right font-medium text-orange-600">
+                                            {student.mois_impayes}
+                                        </td>
+                                        <td className="py-3 text-right font-medium">
+                                            {student.montant_du.toFixed(2)} DH
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-                <div className="bg-white rounded-xl shadow-sm p-6 border">
-                    <h3 className="font-semibold text-gray-900 mb-4">Élèves en retard</h3>
-                    <p className="text-gray-500 text-sm">Aucun retard de paiement.</p>
-                </div>
-            </div>
-        </div>
-    );
-}
-
-function PlaceholderPage({ title, icon }: { title: string; icon: string }) {
-    return (
-        <div className="p-6 flex items-center justify-center min-h-full">
-            <div className="text-center">
-                <div className="text-6xl mb-4">{icon}</div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">{title}</h2>
-                <p className="text-gray-500">Cette section sera bientôt disponible.</p>
-            </div>
+            )}
         </div>
     );
 }
