@@ -14,10 +14,22 @@ import {
 import { paiementsApi, type RecuListItem } from "./api";
 import { PaiementModal } from "./PaiementModal";
 
-export function PaiementsPage() {
+interface PaiementsPageProps {
+    initialData?: { eleveId: string, months: number[] } | null;
+    onClearInitialData?: () => void;
+}
+
+export function PaiementsPage({ initialData, onClearInitialData }: PaiementsPageProps) {
     const [recus, setRecus] = useState<RecuListItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
+
+    // Initial data handling from Calendar
+    useEffect(() => {
+        if (initialData) {
+            setModalOpen(true);
+        }
+    }, [initialData]);
 
     const fetchRecus = async () => {
         try {
@@ -142,8 +154,16 @@ export function PaiementsPage() {
 
             <PaiementModal
                 open={modalOpen}
-                onClose={() => setModalOpen(false)}
-                onSuccess={fetchRecus}
+                onClose={() => {
+                    setModalOpen(false);
+                    if (onClearInitialData) onClearInitialData();
+                }}
+                onSuccess={() => {
+                    fetchRecus();
+                    setModalOpen(false);
+                    if (onClearInitialData) onClearInitialData();
+                }}
+                initialData={initialData}
             />
         </div>
     );

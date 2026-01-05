@@ -1,6 +1,5 @@
 use crate::database::get_connection;
 use crate::errors::AppError;
-use rusqlite::params;
 
 /// Populate database with test data
 pub fn populate_test_data() -> Result<(), AppError> {

@@ -18,6 +18,7 @@ interface PaiementModalProps {
     open: boolean;
     onClose: () => void;
     onSuccess?: () => void;
+    initialData?: { eleveId: string, months: number[] } | null;
 }
 
 // Default months fallback
@@ -36,7 +37,7 @@ const DEFAULT_MOIS = [
     { numero: 8, nom: "Août", paye: false },
 ];
 
-export function PaiementModal({ open, onClose, onSuccess }: PaiementModalProps) {
+export function PaiementModal({ open, onClose, onSuccess, initialData }: PaiementModalProps) {
     // Student selection
     const [searchQuery, setSearchQuery] = useState("");
     const [students, setStudents] = useState<EleveListItem[]>([]);
@@ -52,7 +53,20 @@ export function PaiementModal({ open, onClose, onSuccess }: PaiementModalProps) 
     const [selectedMonths, setSelectedMonths] = useState<number[]>([]);
 
     // Payment form
-    const [anneeScolaire, setAnneeScolaire] = useState<string>("2025-2026");
+    // Generate school year options
+    // Logic: If we are in Jan 2026, academic year is 2025-2026.
+    // If we are in Sept 2025, academic year is 2025-2026.
+    const now = new Date();
+    const currentRealYear = now.getFullYear();
+    const currentMonthIndex = now.getMonth(); // 0-11
+
+    // If Sept (8) or later, start year is current year. Else (Jan-Aug), start year is previous year.
+    const academicStartYear = currentMonthIndex >= 8 ? currentRealYear : currentRealYear - 1;
+
+    // Default to current academic year
+    const defaultAnnee = `${academicStartYear}-${academicStartYear + 1}`;
+
+    const [anneeScolaire, setAnneeScolaire] = useState<string>(defaultAnnee);
     const [typePaiement, setTypePaiement] = useState<"MENSUALITE" | "INSCRIPTION" | "ASSURANCE" | "DON">("MENSUALITE");
     const [modePaiement, setModePaiement] = useState<"ESPECES" | "CHEQUE" | "VIREMENT">("ESPECES");
     const [montant, setMontant] = useState<string>("");
@@ -60,13 +74,50 @@ export function PaiementModal({ open, onClose, onSuccess }: PaiementModalProps) 
     const [numeroCarnet, setNumeroCarnet] = useState("");
     const [numeroRecu, setNumeroRecu] = useState("");
 
-    // Generate school year options (current + next 2 years)
-    const currentYear = new Date().getFullYear();
     const anneeOptions = [
-        `${currentYear}-${currentYear + 1}`,
-        `${currentYear + 1}-${currentYear + 2}`,
-        `${currentYear + 2}-${currentYear + 3}`,
+        `${academicStartYear - 1}-${academicStartYear}`, // Previous year (useful for late payments)
+        `${academicStartYear}-${academicStartYear + 1}`, // Current
+        `${academicStartYear + 1}-${academicStartYear + 2}`, // Next
     ];
+
+    // Load initial data
+    useEffect(() => {
+        if (initialData && open) {
+            // Find student
+            elevesApi.getById(initialData.eleveId).then(student => {
+                // Convert full student to list item minimal version for compatibility
+                const listItem: EleveListItem = {
+                    id: student.id,
+                    code_matricule: student.code_matricule,
+                    nom: student.nom,
+                    prenom: student.prenom,
+                    photo_path: student.photo_path,
+                    // These fields might be missing in full object but needed in list item
+                    classe_nom: "",
+                    niveau_nom: "",
+                    has_late_payments: false
+                };
+                setSelectedStudent(listItem);
+                setSelectedMonths(initialData.months);
+
+                // Calculate initial amount
+                const calculatedAmount = (initialData.months.length * 100).toString();
+                setMontant(calculatedAmount);
+
+            }).catch(console.error);
+        }
+    }, [initialData, open]);
+
+    // Auto-calculate amount when months change (only if type is MENSUALITE)
+    useEffect(() => {
+        if (typePaiement === "MENSUALITE") {
+            const calculated = (selectedMonths.length * 100).toString();
+            // Only update if it was auto-calculated before or empty, to allow manual override
+            if (montant === "" || (parseFloat(montant) % 100 === 0 && selectedMonths.length > 0)) { // Added condition for selectedMonths.length > 0 to avoid setting 0 when no months are selected
+                setMontant(calculated);
+            }
+        }
+    }, [selectedMonths, typePaiement]);
 
     // Search students
     useEffect(() => {
@@ -88,39 +139,37 @@ export function PaiementModal({ open, onClose, onSuccess }: PaiementModalProps) 
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
-    // Load payment status when student or year changes
+    // Load payment status when student changes (using the WORKING API from EleveDetail)
     useEffect(() => {
         if (!selectedStudent) return;
 
         const loadStatus = async () => {
             setLoading(true);
             setLoadError(null);
-            console.log("🔍 Loading payment status for:", selectedStudent.id, anneeScolaire);
-
-            // Create a timeout promise
-            const timeoutPromise = new Promise<never>((_, reject) => {
-                setTimeout(() => reject(new Error("Timeout de 10 secondes dépassé")), 10000);
-            });
+            console.log("🔍 Loading paid months for:", selectedStudent.id);
 
             try {
-                // Race between API call and timeout
-                const status = await Promise.race([
-                    paiementsApi.getPaiementStatus(selectedStudent.id, anneeScolaire),
-                    timeoutPromise
-                ]);
+                // Use the SAME API that works in EleveDetail!
+                const paidMonths = await elevesApi.getPaidMonths(selectedStudent.id);
+                console.log("✅ Paid months loaded:", paidMonths);
 
-                console.log("✅ Payment status loaded:", status);
-                setPaiementStatus(status);
+                // Build the PaiementStatus object from the paid months array
+                const moisData = DEFAULT_MOIS.map(m => ({
+                    ...m,
+                    paye: paidMonths.includes(m.numero),
+                    montant_du: 100, // Default monthly fee
+                    recu_id: undefined
+                }));
+
+                setPaiementStatus({
+                    eleve_id: selectedStudent.id,
+                    annee: anneeScolaire,
+                    mois: moisData
+                });
             } catch (error) {
-                console.error("❌ Error loading payment status:", error);
-                const errorMsg = String(error);
-                setLoadError(errorMsg);
-
-                if (errorMsg.includes("Timeout")) {
-                    toast.error("Erreur: Temps d'attente dépassé. Utilisation de la grille par défaut.");
-                } else {
-                    toast.error("Impossible de charger l'historique. Grille par défaut affichée.");
-                }
+                console.error("❌ Error loading paid months:", error);
+                setLoadError(String(error));
+                toast.error("Impossible de charger l'historique. Grille par défaut affichée.");
             } finally {
                 setLoading(false);
             }
@@ -279,17 +328,28 @@ export function PaiementModal({ open, onClose, onSuccess }: PaiementModalProps) 
                                         </span>
                                     </div>
                                 </div>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => {
-                                        setSelectedStudent(null);
-                                        setSearchQuery("");
-                                        setPaiementStatus(null);
-                                    }}
-                                >
-                                    <X className="h-4 w-4" />
-                                </Button>
+                                <div className="flex items-center gap-2">
+                                    <Input
+                                        id="montant"
+                                        type="number"
+                                        value={montant}
+                                        onChange={(e) => setMontant(e.target.value)}
+                                        placeholder="0.00"
+                                        className="w-24 text-right"
+                                    />
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => {
+                                            setSelectedStudent(null);
+                                            setSearchQuery("");
+                                            setPaiementStatus(null);
+                                            setMontant(""); // Clear montant when student is deselected
+                                        }}
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                </div>
                             </div>
                         </Card>
                     )}

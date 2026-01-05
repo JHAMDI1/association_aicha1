@@ -6,6 +6,7 @@ use std::fs;
 use std::path::PathBuf;
 use base64::{Engine as _, engine::general_purpose};
 use rusqlite::params;
+use chrono::{Datelike, Local};
 
 /// Élève entity
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -34,6 +35,7 @@ pub struct EleveListItem {
     pub photo_path: Option<String>,
     pub classe_nom: Option<String>,
     pub niveau_nom: Option<String>,
+    pub has_late_payments: bool,
 }
 
 /// Create élève request
@@ -104,33 +106,115 @@ pub fn get_all_eleves(search: Option<String>) -> Result<Vec<EleveListItem>, AppE
     let eleves = if let Some(ref s) = search {
         let search_pattern = format!("%{}%", s);
         stmt.query_map([&search_pattern], |row| {
+            let id: String = row.get(0)?;
             Ok(EleveListItem {
-                id: row.get(0)?,
+                id: id.clone(),
                 code_matricule: row.get(1)?,
                 nom: row.get(2)?,
                 prenom: row.get(3)?,
                 photo_path: row.get(4)?,
                 classe_nom: row.get(5)?,
                 niveau_nom: row.get(6)?,
+                has_late_payments: false, // Will be set below
             })
         })?
         .collect::<Result<Vec<_>, _>>()?
     } else {
         stmt.query_map([], |row| {
+            let id: String = row.get(0)?;
             Ok(EleveListItem {
-                id: row.get(0)?,
+                id: id.clone(),
                 code_matricule: row.get(1)?,
                 nom: row.get(2)?,
                 prenom: row.get(3)?,
                 photo_path: row.get(4)?,
                 classe_nom: row.get(5)?,
                 niveau_nom: row.get(6)?,
+                has_late_payments: false, // Will be set below
             })
         })?
         .collect::<Result<Vec<_>, _>>()?
     };
     
-    Ok(eleves)
+    // Optimize: Get all students with late payments in ONE query
+    // Dynamic academic year calculation
+    let now = Local::now();
+    let current_month = now.month() as i32;
+    let current_real_year = now.year();
+    
+    // Academic year: Sept 2025 to Aug 2026 = start_year 2025
+    let start_year = if current_month >= 9 { current_real_year } else { current_real_year - 1 };
+    let next_year = start_year + 1;
+    
+    // Determine which months SHOULD be paid by now
+    // We only mark a month as "late" if it's in the PAST
+    // Current month = Jan 2026 (month=1), academic months already passed = Sept(9), Oct(10), Nov(11), Dec(12)
+    let months_should_be_paid: Vec<i32> = if current_month >= 9 {
+        // Sept-Dec of current year (e.g., in Oct 2025: months 9, 10 are due)
+        (9..=current_month).collect()
+    } else {
+        // Jan-Aug of next year (e.g., in Jan 2026: months 9,10,11,12 of 2025 + month 1 of 2026 is current, so only 9,10,11,12 are late)
+        // But wait - current month itself is not late, only past months
+        // If current_month=1, late months = 9,10,11,12 from start_year
+        let past_first_half: Vec<i32> = vec![9, 10, 11, 12];
+        let past_second_half: Vec<i32> = (1..current_month).collect();
+        [past_first_half, past_second_half].concat()
+    };
+    
+    println!("[ELEVES] 📊 Checking late payments. Year={}-{}, Months due: {:?}", start_year, next_year, months_should_be_paid);
+    
+    // If no months should be paid yet (e.g., it's September and we just started), no one is late
+    if months_should_be_paid.is_empty() {
+        return Ok(eleves);
+    }
+    
+    // Build dynamic query for checking late payments
+    // A student is late if ANY of the expected months is missing payment
+    let mut late_stmt = conn.prepare(
+        r#"
+        SELECT DISTINCT e.id
+        FROM eleves e
+        WHERE e.deleted_at IS NULL
+        AND EXISTS (
+            SELECT 1
+            FROM (SELECT 9 as mois UNION SELECT 10 UNION SELECT 11 UNION SELECT 12
+                  UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4
+                  UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8) m
+            WHERE 
+                ((m.mois >= 9 AND m.mois <= 12 AND ? <= 12 AND m.mois <= ?) OR
+                 (m.mois >= 9 AND m.mois <= 12 AND ? < 9) OR
+                 (m.mois >= 1 AND m.mois < ? AND ? < 9))
+                AND NOT EXISTS (
+                    SELECT 1 FROM lignes_paiement lp
+                    JOIN recus r ON lp.recu_id = r.id
+                    WHERE lp.eleve_id = e.id
+                    AND r.etat = 'VALIDE'
+                    AND r.type_paiement = 'MENSUALITE'
+                    AND lp.mois = m.mois
+                    AND (
+                        (lp.mois >= 9 AND lp.annee = ?) OR
+                        (lp.mois < 9 AND lp.annee = ?)
+                    )
+                )
+        )
+        "#,
+    )?;
+    
+    let late_student_ids: Vec<String> = late_stmt
+        .query_map(params![current_month, current_month, current_month, current_month, current_month, start_year, next_year], |row| row.get(0))?
+        .filter_map(|r| r.ok())
+        .collect();
+    
+    // Update has_late_payments for matching students
+    let eleves_with_status: Vec<EleveListItem> = eleves
+        .into_iter()
+        .map(|mut eleve| {
+            eleve.has_late_payments = late_student_ids.contains(&eleve.id);
+            eleve
+        })
+        .collect();
+    
+    Ok(eleves_with_status)
 }
 
 /// Get élève by ID
@@ -259,8 +343,53 @@ pub fn delete_eleve(id: &str) -> Result<(), AppError> {
         return Err(AppError::NotFound("Élève non trouvé".to_string()));
     }
     
+    println!("[ELEVES] ✅ Élève deleted: {}", id);
     Ok(())
 }
+
+/// Get list of paid months for a student in current year
+pub fn get_paid_months(eleve_id: &str) -> Result<Vec<i32>, AppError> {
+    println!("[ELEVES] 📅 Getting paid months for eleve: {}", eleve_id);
+    
+    let conn = get_connection();
+    
+    // Determine current academic year based on today's date
+    let now = Local::now();
+    let month = now.month();
+    let year = now.year();
+    let start_year = if month >= 9 { year } else { year - 1 };
+    let next_year = start_year + 1;
+    let annee_scolaire = format!("{}-{}", start_year, next_year);
+    
+    println!("[ELEVES] 🔍 Checking payments for academic year: {} (Start Year: {})", annee_scolaire, start_year);
+    
+    let mut stmt = conn.prepare(
+        r#"
+        SELECT DISTINCT lp.mois
+        FROM lignes_paiement lp
+        JOIN recus r ON lp.recu_id = r.id
+        WHERE lp.eleve_id = ?
+        AND r.etat = 'VALIDE'
+        AND r.type_paiement = 'MENSUALITE'
+        AND (
+            (lp.annee = ? AND lp.mois >= 9) OR
+            (lp.annee = ? AND lp.mois <= 8)
+        )
+        ORDER BY lp.mois
+        "#,
+    )?;
+    
+    let months = stmt.query_map(params![eleve_id, start_year, next_year], |row| {
+        row.get(0)
+    })?
+    .collect::<Result<Vec<_>, _>>()?;
+    
+    println!("[ELEVES] ✅ Found {} paid months for year {}", months.len(), annee_scolaire);
+    Ok(months)
+}
+
+// has_late_payments function removed as it was unused and inefficient in loop context
+// Late status is now calculated in bulk query in get_all_eleves
 
 fn get_photos_dir() -> PathBuf {
     let mut path = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));

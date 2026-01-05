@@ -6,7 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { toast } from "sonner";
-import { Download } from "lucide-react";
+import { Download, FileText } from "lucide-react";
+import { exportToPDF } from "../../lib/pdfExport";
 
 type ReportType = "recettes" | "depenses" | "bilan" | "retards" | "inscriptions";
 
@@ -73,11 +74,11 @@ export function ReportsPage() {
                 break;
 
             case "depenses":
-                csv = "Date,Titre,Catégorie,Montant,Bénéficiaire\n";
+                csv = "Date,Motif,Montant,Bénéficiaire\n";
                 (reportData as DepensesReport).details.forEach((d) => {
-                    csv += `${d.date},${d.titre},${d.categorie},${d.montant},${d.beneficiaire}\n`;
+                    csv += `${d.date},${d.motif},${d.montant},${d.beneficiaire}\n`;
                 });
-                csv += `\nTotal,,,,${(reportData as DepensesReport).total}`;
+                csv += `\nTotal,,,${(reportData as DepensesReport).total}`;
                 filename = `depenses_${dateDebut}_${dateFin}.csv`;
                 break;
 
@@ -114,6 +115,114 @@ export function ReportsPage() {
         link.download = filename;
         link.click();
         toast.success("Fichier CSV téléchargé");
+    };
+
+    const handleDownloadPDF = () => {
+        if (!reportData) return;
+
+        switch (reportType) {
+            case "recettes":
+                exportToPDF({
+                    title: "Rapport des Recettes",
+                    subtitle: `P\u00e9riode: ${dateDebut} au ${dateFin}`,
+                    data: (reportData as RecettesReport).details.map(r => ({
+                        date: r.date.split("T")[0],
+                        eleve: `${r.eleve_prenom} ${r.eleve_nom}`,
+                        mois: r.mois.toString(),
+                        montant: `${r.montant.toFixed(2)} DH`,
+                        mode: r.mode_paiement,
+                    })),
+                    columns: [
+                        { header: "Date", dataKey: "date" },
+                        { header: "\u00c9l\u00e8ve", dataKey: "eleve" },
+                        { header: "Mois", dataKey: "mois" },
+                        { header: "Montant", dataKey: "montant" },
+                        { header: "Mode", dataKey: "mode" },
+                    ],
+                    filename: `recettes_${dateDebut}_${dateFin}.pdf`,
+                });
+                break;
+
+            case "depenses":
+                exportToPDF({
+                    title: "Rapport des D\u00e9penses",
+                    subtitle: `P\u00e9riode: ${dateDebut} au ${dateFin}`,
+                    data: (reportData as DepensesReport).details.map(d => ({
+                        date: d.date,
+                        motif: d.motif,
+                        montant: `${d.montant.toFixed(2)} DH`,
+                        beneficiaire: d.beneficiaire,
+                    })),
+                    columns: [
+                        { header: "Date", dataKey: "date" },
+                        { header: "Motif", dataKey: "motif" },
+                        { header: "Montant", dataKey: "montant" },
+                        { header: "B\u00e9n\u00e9ficiaire", dataKey: "beneficiaire" },
+                    ],
+                    filename: `depenses_${dateDebut}_${dateFin}.pdf`,
+                });
+                break;
+
+            case "bilan":
+                const bilan = reportData as BilanReport;
+                exportToPDF({
+                    title: "Bilan Financier",
+                    subtitle: `P\u00e9riode: ${bilan.periode}`,
+                    data: [
+                        { type: "Recettes", montant: `${bilan.recettes.toFixed(2)} DH` },
+                        { type: "D\u00e9penses", montant: `${bilan.depenses.toFixed(2)} DH` },
+                        { type: "Solde", montant: `${bilan.solde.toFixed(2)} DH` },
+                    ],
+                    columns: [
+                        { header: "Type", dataKey: "type" },
+                        { header: "Montant", dataKey: "montant" },
+                    ],
+                    filename: `bilan_${dateDebut}_${dateFin}.pdf`,
+                });
+                break;
+
+            case "retards":
+                exportToPDF({
+                    title: "Retards de Paiement",
+                    subtitle: new Date().toLocaleDateString("fr-FR"),
+                    data: (reportData as LatePaymentStudent[]).map(s => ({
+                        nom: s.nom,
+                        prenom: s.prenom,
+                        classe: s.classe,
+                        mois: s.mois_impayes.toString(),
+                        montant: `${s.montant_du.toFixed(2)} DH`,
+                    })),
+                    columns: [
+                        { header: "Nom", dataKey: "nom" },
+                        { header: "Pr\u00e9nom", dataKey: "prenom" },
+                        { header: "Classe", dataKey: "classe" },
+                        { header: "Mois impay\u00e9s", dataKey: "mois" },
+                        { header: "Montant d\u00fb", dataKey: "montant" },
+                    ],
+                    filename: "retards_paiement.pdf",
+                });
+                break;
+
+            case "inscriptions":
+                exportToPDF({
+                    title: "Inscriptions par Classe",
+                    subtitle: new Date().toLocaleDateString("fr-FR"),
+                    data: (reportData as InscriptionItem[]).map(c => ({
+                        classe: c.classe,
+                        nombre: c.nb_eleves.toString(),
+                        eleves: c.eleves.join(", "),
+                    })),
+                    columns: [
+                        { header: "Classe", dataKey: "classe" },
+                        { header: "Nb \u00c9l\u00e8ves", dataKey: "nombre" },
+                        { header: "\u00c9l\u00e8ves", dataKey: "eleves" },
+                    ],
+                    filename: "inscriptions.pdf",
+                });
+                break;
+        }
+
+        toast.success("Fichier PDF t\u00e9l\u00e9charg\u00e9");
     };
 
     const setPreset = (preset: string) => {
@@ -216,10 +325,16 @@ export function ReportsPage() {
                 <Card className="p-6 space-y-4">
                     <div className="flex items-center justify-between">
                         <h2 className="text-xl font-semibold">Résultats</h2>
-                        <Button onClick={handleDownloadCSV} variant="outline">
-                            <Download className="w-4 h-4 mr-2" />
-                            Télécharger CSV
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button onClick={handleDownloadPDF} variant="outline">
+                                <FileText className="w-4 h-4 mr-2" />
+                                Export PDF
+                            </Button>
+                            <Button onClick={handleDownloadCSV} variant="outline">
+                                <Download className="w-4 h-4 mr-2" />
+                                Export CSV
+                            </Button>
+                        </div>
                     </div>
 
                     {reportType === "recettes" && (
@@ -264,8 +379,7 @@ export function ReportsPage() {
                                     <thead>
                                         <tr className="border-b">
                                             <th className="text-left pb-2">Date</th>
-                                            <th className="text-left pb-2">Titre</th>
-                                            <th className="text-left pb-2">Catégorie</th>
+                                            <th className="text-left pb-2">Motif</th>
                                             <th className="text-right pb-2">Montant</th>
                                             <th className="text-left pb-2">Bénéficiaire</th>
                                         </tr>
@@ -274,8 +388,7 @@ export function ReportsPage() {
                                         {(reportData as DepensesReport).details.map((d, i) => (
                                             <tr key={i} className="border-b">
                                                 <td className="py-2">{d.date}</td>
-                                                <td className="py-2">{d.titre}</td>
-                                                <td className="py-2">{d.categorie}</td>
+                                                <td className="py-2">{d.motif}</td>
                                                 <td className="py-2 text-right">{d.montant.toFixed(2)} DH</td>
                                                 <td className="py-2">{d.beneficiaire}</td>
                                             </tr>

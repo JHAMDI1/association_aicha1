@@ -113,36 +113,50 @@ pub fn get_paiement_status(eleve_id: &str, annee_scolaire: &str) -> Result<Paiem
         .unwrap_or(2025);
     
     let mensualite = CONFIG.paiements.mensualite_default;
+    let next_year = year + 1;
     
-    // Month names in French (school year: Sept=1, Aug=12)
+    println!("[PAYMENT_STATUS] 📊 Querying for year={} and next_year={}", year, next_year);
+    
+    // Use same query pattern as get_paid_months which works correctly
+    let mut stmt = conn.prepare(
+        r#"
+        SELECT DISTINCT lp.mois
+        FROM lignes_paiement lp
+        JOIN recus r ON lp.recu_id = r.id
+        WHERE lp.eleve_id = ?
+        AND r.etat = 'VALIDE'
+        AND r.type_paiement = 'MENSUALITE'
+        AND (
+            (lp.annee = ? AND lp.mois >= 9) OR
+            (lp.annee = ? AND lp.mois <= 8)
+        )
+        "#
+    )?;
+    
+    let paid_months: Vec<i32> = stmt.query_map(params![eleve_id, year, next_year], |row| {
+        row.get(0)
+    })?
+    .filter_map(|r| r.ok())
+    .collect();
+    
+    println!("[PAYMENT_STATUS] ✅ Found {} paid months: {:?}", paid_months.len(), paid_months);
+    
+    // Generate result for 12 academic months
     let mois_noms = vec![
         "Septembre", "Octobre", "Novembre", "Décembre",
         "Janvier", "Février", "Mars", "Avril",
         "Mai", "Juin", "Juillet", "Août"
     ];
-    
-    let mut mois_status = Vec::new();
-    
-    // Check each month (9, 10, 11, 12, 1, 2, 3, 4, 5, 6, 7, 8)
     let mois_ordre = vec![9, 10, 11, 12, 1, 2, 3, 4, 5, 6, 7, 8];
-    
+    let mut mois_status = Vec::new();
+
     for (idx, &mois) in mois_ordre.iter().enumerate() {
-        // Determine the calendar year for this month
-        let calendar_year = if mois >= 9 { year } else { year + 1 };
-        
-        // Check if this month is already paid
-        let paid_check: Option<String> = conn.query_row(
-            "SELECT recu_id FROM lignes_paiement WHERE eleve_id = ? AND mois = ? AND annee = ?",
-            params![eleve_id, mois, calendar_year],
-            |row| row.get(0)
-        ).ok();
-        
         mois_status.push(MoisStatus {
             numero: mois,
             nom: mois_noms[idx].to_string(),
-            paye: paid_check.is_some(),
+            paye: paid_months.contains(&mois),
             montant_du: mensualite,
-            recu_id: paid_check,
+            recu_id: None, // Simplified - we just need paid/unpaid status
         });
     }
     

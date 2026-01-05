@@ -110,12 +110,16 @@ export function ElevesList({ onSelectEleve, onAddEleve }: ElevesListProps) {
                     {eleves.map((eleve) => (
                         <Card
                             key={eleve.id}
-                            className="cursor-pointer hover:shadow-md transition-shadow"
+                            className={`cursor-pointer hover:shadow-md transition-all border-l-4 ${eleve.has_late_payments
+                                    ? 'bg-red-50 border-l-red-500 hover:bg-red-100'
+                                    : 'bg-green-50 border-l-green-500 hover:bg-green-100'
+                                }`}
                             onClick={() => onSelectEleve(eleve.id)}
                         >
                             <CardContent className="p-4 flex items-center gap-4">
                                 {/* Avatar */}
-                                <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${eleve.has_late_payments ? 'bg-red-200' : 'bg-emerald-100'
+                                    }`}>
                                     {eleve.photo_path ? (
                                         <img
                                             src={eleve.photo_path}
@@ -123,7 +127,8 @@ export function ElevesList({ onSelectEleve, onAddEleve }: ElevesListProps) {
                                             className="w-full h-full rounded-full object-cover"
                                         />
                                     ) : (
-                                        <span className="text-emerald-600 font-semibold text-lg">
+                                        <span className={`font-semibold text-lg ${eleve.has_late_payments ? 'text-red-700' : 'text-emerald-600'
+                                            }`}>
                                             {eleve.prenom[0]}{eleve.nom[0]}
                                         </span>
                                     )}
@@ -139,6 +144,11 @@ export function ElevesList({ onSelectEleve, onAddEleve }: ElevesListProps) {
                                         {eleve.classe_nom && ` • ${eleve.classe_nom}`}
                                         {eleve.niveau_nom && ` (${eleve.niveau_nom})`}
                                     </p>
+                                    {eleve.has_late_payments && (
+                                        <p className="text-xs text-red-600 font-medium mt-1">
+                                            ⚠️ Paiements en retard
+                                        </p>
+                                    )}
                                 </div>
 
                                 {/* Arrow */}

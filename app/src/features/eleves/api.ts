@@ -24,6 +24,7 @@ export interface EleveListItem {
     photo_path?: string;
     classe_nom?: string;
     niveau_nom?: string;
+    has_late_payments: boolean;
 }
 
 export interface CreateEleveRequest {
@@ -73,5 +74,13 @@ export const elevesApi = {
 
     uploadPhoto: async (eleveId: string, photoBase64: string): Promise<string> => {
         return invoke("upload_photo", { eleveId, photoBase64 });
+    },
+
+    getPaidMonths: async (eleveId: string): Promise<number[]> => {
+        return invoke("get_eleve_paid_months", { eleveId });
+    },
+
+    search: async (query: string): Promise<EleveListItem[]> => {
+        return invoke("get_all_eleves", { search: query });
     },
 };

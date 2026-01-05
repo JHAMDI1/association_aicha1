@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Pencil, Trash2, Users, School } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, School, UserPlus, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,13 +21,15 @@ import {
 } from "@/components/ui/table";
 import {
     api,
+    inscriptionsApi,
     ClasseListItem,
     CreateClasseRequest,
     Niveau,
-    Enseignant
+    Enseignant,
+    EleveInClasse
 } from "./api";
+import { InscriptionModal } from "./InscriptionModal";
 
-// Removed CONFIG import
 const DEFAULT_ANNEE = "2025-2026";
 
 export function ClassesPage() {
@@ -36,15 +38,24 @@ export function ClassesPage() {
     const [enseignants, setEnseignants] = useState<Enseignant[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // Modal State
+    // Create/Edit Modal
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
 
-    // Form State
+    // Students Modal
+    const [studentsModalOpen, setStudentsModalOpen] = useState(false);
+    const [selectedClasse, setSelectedClasse] = useState<{ id: string; nom: string } | null>(null);
+    const [classStudents, setClassStudents] = useState<EleveInClasse[]>([]);
+    const [studentsLoading, setStudentsLoading] = useState(false);
+
+    // Inscription Modal
+    const [inscriptionModalOpen, setInscriptionModalOpen] = useState(false);
+    const [preSelectedClassId, setPreSelectedClassId] = useState<string>("");
+
     const [formData, setFormData] = useState<CreateClasseRequest>({
         nom: "",
         niveau_id: "",
-        enseignant_id: "", // Optional
+        enseignant_id: "",
         annee_scolaire: DEFAULT_ANNEE,
     });
 
@@ -81,7 +92,7 @@ export function ClassesPage() {
         try {
             const payload = {
                 ...formData,
-                enseignant_id: formData.enseignant_id || undefined, // Convert empty string to undefined
+                enseignant_id: formData.enseignant_id || undefined,
             };
 
             if (editingId) {
@@ -92,7 +103,7 @@ export function ClassesPage() {
                 toast.success("Classe créée");
             }
             setIsModalOpen(false);
-            fetchData(); // Reload all to update list and counts/relations
+            fetchData();
             resetForm();
         } catch (error) {
             toast.error("Erreur lors de l'enregistrement");
@@ -107,7 +118,6 @@ export function ClassesPage() {
             toast.success("Classe supprimée");
             fetchData();
         } catch (error) {
-            // Cast error as string to check message
             const msg = String(error);
             if (msg.includes("contient des élèves")) {
                 toast.error("Impossible: La classe contient des élèves");
@@ -124,19 +134,7 @@ export function ClassesPage() {
         setIsModalOpen(true);
     };
 
-    const openEditModal = (cls: ClasseListItem, _fullDetails: any) => {
-        // Ideally we would fetch full details or find them. 
-        // Here cls has IDs but simplified. Wait, ClasseListItem doesn't have raw IDs for relations usually?
-        // Let's check api.ts definition. 
-        // ClasseListItem has: niveau_nom, enseignant_nom. Does NOT have niveau_id?
-        // Ah, I defined ClasseListItem without niveau_id in Rust.
-        // So I need to fetch the specific classe to edit it properly, or I need to add IDs to the list item.
-        // I should fetch details.
-
-        fetchClasseDetails(cls.id);
-    };
-
-    const fetchClasseDetails = async (id: string) => {
+    const openEditModal = async (id: string) => {
         try {
             const details = await api.getClasse(id);
             setEditingId(id);
@@ -157,8 +155,56 @@ export function ClassesPage() {
             nom: "",
             niveau_id: "",
             enseignant_id: "",
-            annee_scolaire: DEFAULT_ANNEE, // Should use current configured year
+            annee_scolaire: DEFAULT_ANNEE,
         });
+    };
+
+    // --- Students Modal Functions ---
+
+    const openStudentsModal = async (classeId: string, classeNom: string) => {
+        setSelectedClasse({ id: classeId, nom: classeNom });
+        setStudentsModalOpen(true);
+        setStudentsLoading(true);
+        try {
+            const students = await inscriptionsApi.getByClasse(classeId);
+            setClassStudents(students);
+        } catch (error) {
+            toast.error("Impossible de charger la liste des élèves");
+            console.error(error);
+        } finally {
+            setStudentsLoading(false);
+        }
+    };
+
+    // deleted handleRemoveStudent
+
+    const deleteInscription = async (inscriptionId: string) => {
+        if (!confirm("Retirer cet élève de la classe ?")) return;
+        try {
+            await inscriptionsApi.delete(inscriptionId);
+            toast.success("Élève retiré de la classe");
+            // Refresh list
+            if (selectedClasse) {
+                openStudentsModal(selectedClasse.id, selectedClasse.nom);
+            }
+            fetchData(); // Update counts
+        } catch (error) {
+            toast.error("Erreur lors du retrait");
+            console.error(error);
+        }
+    };
+
+    // --- Inscription Modal Functions ---
+    const openInscriptionModal = (classeId?: string) => {
+        setPreSelectedClassId(classeId || "");
+        setInscriptionModalOpen(true);
+    };
+
+    const handleInscriptionSuccess = () => {
+        fetchData(); // Refresh counts
+        if (selectedClasse && studentsModalOpen) {
+            openStudentsModal(selectedClasse.id, selectedClasse.nom);
+        }
     };
 
     return (
@@ -170,13 +216,14 @@ export function ClassesPage() {
                         Groupes d'élèves pour l'année {DEFAULT_ANNEE}
                     </p>
                 </div>
-                <Button onClick={openAddModal}>
-                    <Plus className="mr-2 h-4 w-4" /> Nouvelle Classe
-                </Button>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {/* KPI Cards maybe? No, let's just list classes */}
+                <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => openInscriptionModal()}>
+                        <UserPlus className="mr-2 h-4 w-4" /> Inscrire un élève
+                    </Button>
+                    <Button onClick={openAddModal}>
+                        <Plus className="mr-2 h-4 w-4" /> Nouvelle Classe
+                    </Button>
+                </div>
             </div>
 
             <Card>
@@ -210,13 +257,24 @@ export function ClassesPage() {
                                     <TableCell>{cls.niveau_nom}</TableCell>
                                     <TableCell>{cls.enseignant_nom || "-"}</TableCell>
                                     <TableCell>
-                                        <div className="flex items-center gap-1">
-                                            <Users className="h-4 w-4 text-muted-foreground" />
+                                        <div
+                                            className="flex items-center gap-1 cursor-pointer hover:underline text-blue-600 w-fit"
+                                            onClick={() => openStudentsModal(cls.id, cls.nom)}
+                                        >
+                                            <Users className="h-4 w-4" />
                                             <span>{cls.count_eleves}</span>
                                         </div>
                                     </TableCell>
-                                    <TableCell className="text-right space-x-2">
-                                        <Button variant="ghost" size="icon" onClick={() => openEditModal(cls, null)}>
+                                    <TableCell className="text-right space-x-1">
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            title="Voir les élèves / Inscrire"
+                                            onClick={() => openStudentsModal(cls.id, cls.nom)}
+                                        >
+                                            <Eye className="h-4 w-4 text-gray-500" />
+                                        </Button>
+                                        <Button variant="ghost" size="icon" onClick={() => openEditModal(cls.id)}>
                                             <Pencil className="h-4 w-4 text-blue-500" />
                                         </Button>
                                         <Button variant="ghost" size="icon" onClick={() => handleDelete(cls.id)}>
@@ -230,6 +288,7 @@ export function ClassesPage() {
                 </CardContent>
             </Card>
 
+            {/* Create/Edit Modal */}
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
                 <DialogContent>
                     <DialogHeader>
@@ -288,6 +347,86 @@ export function ClassesPage() {
                     </form>
                 </DialogContent>
             </Dialog>
+
+            {/* Students List Modal */}
+            <Dialog open={studentsModalOpen} onOpenChange={setStudentsModalOpen}>
+                <DialogContent className="max-w-3xl">
+                    <DialogHeader>
+                        <DialogTitle className="flex justify-between items-center">
+                            <span>Élèves - {selectedClasse?.nom}</span>
+                            <Button size="sm" onClick={() => openInscriptionModal(selectedClasse?.id)}>
+                                <UserPlus className="mr-2 h-4 w-4" /> Ajouter
+                            </Button>
+                        </DialogTitle>
+                    </DialogHeader>
+
+                    <div className="max-h-[60vh] overflow-auto">
+                        {studentsLoading ? (
+                            <div className="text-center py-8">Chargement...</div>
+                        ) : (
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Photo</TableHead>
+                                        <TableHead>Nom & Prénom</TableHead>
+                                        <TableHead>Date Inscription</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {classStudents.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                                                Aucun élève inscrit dans cette classe.
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : (
+                                        classStudents.map((eleve) => (
+                                            <TableRow key={eleve.id}>
+                                                <TableCell>
+                                                    {eleve.eleve_photo ? (
+                                                        <img
+                                                            src={`http://localhost:1420/assets/${eleve.eleve_photo}`}
+                                                            className="w-8 h-8 rounded-full object-cover"
+                                                            alt=""
+                                                        />
+                                                    ) : (
+                                                        <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-xs text-gray-500">
+                                                            ?
+                                                        </div>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="font-medium">
+                                                    {eleve.eleve_nom.toUpperCase()} {eleve.eleve_prenom}
+                                                </TableCell>
+                                                <TableCell>{eleve.date_inscription.split(' ')[0]}</TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() => deleteInscription(eleve.id)}
+                                                        title="Retirer de la classe"
+                                                    >
+                                                        <Trash2 className="h-4 w-4 text-red-500" />
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Inscription Modal */}
+            <InscriptionModal
+                open={inscriptionModalOpen}
+                onClose={() => setInscriptionModalOpen(false)}
+                onSuccess={handleInscriptionSuccess}
+                preSelectedClassId={preSelectedClassId}
+            />
         </div>
     );
 }

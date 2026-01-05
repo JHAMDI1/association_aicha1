@@ -5,7 +5,11 @@ import { EleveDetail } from "./EleveDetail";
 
 type View = "list" | "add" | "detail";
 
-export function ElevesPage() {
+interface ElevesPageProps {
+    onNavigateToPayment?: (eleveId: string, months: number[]) => void;
+}
+
+export function ElevesPage({ onNavigateToPayment }: ElevesPageProps) {
     const [view, setView] = useState<View>("list");
     const [selectedEleveId, setSelectedEleveId] = useState<string | null>(null);
 
@@ -25,6 +29,14 @@ export function ElevesPage() {
 
     const handleSuccess = () => {
         setView("list");
+    };
+
+    const handleNavigateToPayment = (eleveId: string, months: number[]) => {
+        if (onNavigateToPayment) {
+            onNavigateToPayment(eleveId, months);
+        } else {
+            alert("Navigation non disponible");
+        }
     };
 
     return (
@@ -47,6 +59,7 @@ export function ElevesPage() {
                 <EleveDetail
                     eleveId={selectedEleveId}
                     onBack={handleBack}
+                    onNavigateToPayment={handleNavigateToPayment}
                 />
             )}
         </div>

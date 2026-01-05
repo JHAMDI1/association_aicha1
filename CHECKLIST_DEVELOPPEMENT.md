@@ -117,7 +117,7 @@
 - [x] Bouton Déconnexion
 
 ### Gestion des utilisateurs (Admin only)
-- [ ] Page "Gestion des Utilisateurs"
+- [x] Page "Gestion des Utilisateurs" (UsersPage.tsx)
 - [x] Liste des utilisateurs existants (API prête)
 - [x] Formulaire d'ajout d'un nouvel utilisateur (API prête)
   - [x] Nom, Prénom, Email, Mot de passe, Rôle (Select)
@@ -141,6 +141,7 @@
 - [x] Page "Liste des Élèves"
   - [x] Tableau avec colonnes : Photo, Nom, Prénom, Classe, Statut Paiement
   - [x] Barre de recherche instantanée
+  - [x] Indicateurs visuels (Couleurs Statut Paiement)
   - [x] Bouton "Ajouter un Élève"
 - [x] Modale / Page "Fiche Élève"
   - [x] Onglet Infos : Formulaire complet
@@ -149,7 +150,7 @@
     - [x] Date de naissance, Sexe
     - [x] Tuteur : Nom, Téléphone, CIN
     - [x] Adresse
-  - [ ] Onglet Finances : (lecture seule pour l'instant)
+  - [x] Onglet Finances : Intégration Calendrier interactif + Paiement rapide
   - [ ] Onglet Scolarité : Classe actuelle
 - [x] Confirmation avant suppression
 
@@ -217,6 +218,12 @@
   - [x] Infos Élève
   - [x] Détail des mois payés
   - [x] Montant Total
+
+### Corrections Bugs Calendrier Paiement (Jan 2026)
+- [x] Modal Paiement : Calendrier ne chargeait pas → Unifié avec API `getPaidMonths`
+- [x] Liste Élèves : Couleurs Rouge/Vert incorrectes → Calcul dynamique année scolaire
+- [x] SQL : Paramètre `? + 1` ne fonctionnait pas → Paramètres séparés `year`/`next_year`
+- [x] Année scolaire : Hardcoded 2024 → Calcul dynamique avec `chrono::Local::now()`
 
 
 ---
@@ -364,7 +371,7 @@
 > CSV est compatible avec Excel/LibreOffice et suffit pour les besoins comptables de base.
 
 ### Fonctionnalités Non Implémentées (Optionnelles Future)
-- [ ] PDF avec en-tête/logo/pied de page
+- [x] PDF avec en-tête/logo/pied de page
 - [ ] Export Excel (.xlsx)
 - [ ] Graphiques camembert
 - [ ] Attestations individuelles
@@ -375,15 +382,15 @@
 
 ### Backend (Rust)
 - [ ] Commande `export_to_excel(type)` (Élèves, Recus, Depenses)
-- [ ] Commande `backup_database(destination_path)`
-  - [ ] Copie du fichier `.db`
+- [x] Commande `backup_database(destination_path)` (backup_service.rs)
+  - [x] Copie du fichier `.db`
   - [ ] Copie du dossier `uploads`
-- [ ] Commande `restore_database(source_path)` (Admin only)
+- [x] Commande `restore_database(source_path)` (Admin only)
 
 ### Frontend (React)
-- [ ] Page "Paramètres > Sauvegarde"
-  - [ ] Bouton "Sauvegarder maintenant" (Sélection dossier/clé USB)
-  - [ ] Bouton "Restaurer une sauvegarde" (Admin only)
+- [x] Page "Paramètres > Sauvegarde" (BackupPage.tsx)
+  - [x] Bouton "Sauvegarder maintenant" (Saisie chemin manuel)
+  - [x] Bouton "Restaurer une sauvegarde" (Admin only)
 - [ ] Boutons "Exporter Excel" sur chaque liste (Élèves, Finances)
 
 ---

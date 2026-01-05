@@ -19,6 +19,50 @@ type Page = "dashboard" | "eleves" | "paiements" | "depenses" | "donneurs" | "me
 export function Dashboard() {
     const { user, logout, isAdmin } = useAuth();
     const [currentPage, setCurrentPage] = useState<Page>("dashboard");
+    const [userPermissions, setUserPermissions] = useState<any>(null);
+    const [pendingPayment, setPendingPayment] = useState<{ eleveId: string, months: number[] } | null>(null);
+
+    // Load user permissions
+    useEffect(() => {
+        if (user && !isAdmin) {
+            invoke("get_user_permissions", { userId: user.id })
+                .then((perms) => setUserPermissions(perms))
+                .catch((err) => console.error("Error loading permissions:", err));
+        }
+    }, [user, isAdmin]);
+
+    // Helper function to check if user has access to a page
+    const hasAccess = (pageId: Page): boolean => {
+        // Admin has access to everything
+        if (isAdmin) return true;
+
+        // If permissions not loaded yet for secretary, show nothing
+        if (!userPermissions) return false;
+
+        // Map pages to permission keys
+        const pagePermissionMap: Record<Page, string> = {
+            dashboard: "view_dashboard",
+            eleves: "create_eleve", // Can view if can create
+            paiements: "create_recu",
+            depenses: "create_depense",
+            donneurs: "create_donneur",
+            messages: "send_message",
+            classes: "create_classe",
+            enseignants: "create_enseignant",
+            niveaux: "create_niveau",
+            rapports: "generate_report",
+            users: "manage_users", // Admin only anyway
+            settings: "backup_restore", // Admin only anyway
+        };
+
+        const requiredPermission = pagePermissionMap[pageId];
+        return requiredPermission ? userPermissions[requiredPermission] === true : false;
+    };
+
+    const handleNavigateToPayment = (eleveId: string, months: number[]) => {
+        setPendingPayment({ eleveId, months });
+        setCurrentPage("paiements");
+    };
 
     const navItems = [
         { id: "dashboard" as Page, label: "Tableau de bord", icon: "📊" },
@@ -36,7 +80,7 @@ export function Dashboard() {
         { id: "rapports" as Page, label: "Rapports", icon: "📈" },
         ...(isAdmin ? [{ id: "users" as Page, label: "Utilisateurs", icon: "👥" }] : []),
         ...(isAdmin ? [{ id: "settings" as Page, label: "Paramètres", icon: "⚙️" }] : []),
-    ];
+    ].filter(item => hasAccess(item.id));
 
     return (
         <div className="min-h-screen bg-gray-50 flex">
@@ -106,11 +150,16 @@ export function Dashboard() {
             {/* Main Content */}
             <main className="flex-1 overflow-auto bg-gray-50 p-6">
                 {currentPage === "dashboard" && <DashboardHome onNavigate={setCurrentPage} />}
-                {currentPage === "eleves" && <ElevesPage />}
+                {currentPage === "eleves" && <ElevesPage onNavigateToPayment={handleNavigateToPayment} />}
                 {currentPage === "classes" && <ClassesPage />}
                 {currentPage === "niveaux" && <NiveauxPage />}
                 {currentPage === "enseignants" && <EnseignantsPage />}
-                {currentPage === "paiements" && <PaiementsPage />}
+                {currentPage === "paiements" && (
+                    <PaiementsPage
+                        initialData={pendingPayment}
+                        onClearInitialData={() => setPendingPayment(null)}
+                    />
+                )}
                 {currentPage === "depenses" && <DepensesPage />}
                 {currentPage === "donneurs" && <DonneursPage />}
                 {currentPage === "messages" && <MessagesPage />}

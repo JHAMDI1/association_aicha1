@@ -109,3 +109,59 @@ export const api = {
     updateClasse: (id: string, data: UpdateClasseRequest) => invoke<Classe>("update_classe", { id, request: data }),
     deleteClasse: (id: string) => invoke<string>("delete_classe", { id }),
 };
+
+// ==========================================
+// INSCRIPTIONS TYPES
+// ==========================================
+
+export interface InscriptionDetail {
+    id: string;
+    eleve_id: string;
+    eleve_nom: string;
+    eleve_prenom: string;
+    eleve_photo?: string;
+    classe_id: string;
+    classe_nom: string;
+    niveau_nom: string;
+    date_inscription: string;
+    active: boolean;
+}
+
+export interface EleveInClasse {
+    id: string;
+    eleve_id: string;
+    eleve_nom: string;
+    eleve_prenom: string;
+    eleve_photo?: string;
+    date_inscription: string;
+}
+
+export interface ClasseForSelect {
+    id: string;
+    nom: string;
+    niveau_nom: string;
+}
+
+// ==========================================
+// INSCRIPTIONS API
+// ==========================================
+
+export const inscriptionsApi = {
+    getByEleve: (eleveId: string) =>
+        invoke<InscriptionDetail | null>("get_inscription_by_eleve", { eleveId }),
+
+    getByClasse: (classeId: string) =>
+        invoke<EleveInClasse[]>("get_inscriptions_by_classe", { classeId }),
+
+    create: (eleveId: string, classeId: string) =>
+        invoke<{ id: string }>("create_inscription", { eleveId, classeId }),
+
+    delete: (id: string) =>
+        invoke<void>("delete_inscription", { id }),
+
+    updateClasse: (eleveId: string, classeId: string) =>
+        invoke<{ id: string }>("update_inscription_classe", { eleveId, classeId }),
+
+    getClassesForSelect: () =>
+        invoke<[string, string, string][]>("get_classes_for_select"),
+};

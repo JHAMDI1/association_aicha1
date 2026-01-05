@@ -134,6 +134,11 @@ fn upload_photo(eleve_id: String, photo_base64: String) -> Result<String, String
     services::upload_photo(&eleve_id, &photo_base64).map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+fn get_eleve_paid_months(eleve_id: String) -> Result<Vec<i32>, String> {
+    services::get_paid_months(&eleve_id).map_err(|e| e.to_string())
+}
+
 // ============================================
 // NIVEAUX COMMANDS
 // ============================================
@@ -508,6 +513,40 @@ fn populate_test_data_command() -> Result<(), String> {
     services::populate_test_data().map_err(|e| e.to_string())
 }
 
+// ==========================================
+// INSCRIPTIONS COMMANDS
+// ==========================================
+
+#[tauri::command]
+fn get_inscription_by_eleve(eleve_id: String) -> Result<Option<services::InscriptionDetail>, String> {
+    services::get_inscription_by_eleve(&eleve_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_inscriptions_by_classe(classe_id: String) -> Result<Vec<services::EleveInClasse>, String> {
+    services::get_inscriptions_by_classe(&classe_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn create_inscription(eleve_id: String, classe_id: String) -> Result<services::Inscription, String> {
+    services::create_inscription(&eleve_id, &classe_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn delete_inscription(id: String) -> Result<(), String> {
+    services::delete_inscription(&id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn update_inscription_classe(eleve_id: String, classe_id: String) -> Result<services::Inscription, String> {
+    services::update_inscription_classe(&eleve_id, &classe_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_classes_for_select() -> Result<Vec<(String, String, String)>, String> {
+    services::get_all_classes_for_select().map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Initialize database on startup
@@ -532,6 +571,7 @@ pub fn run() {
             update_eleve,
             delete_eleve,
             upload_photo,
+            get_eleve_paid_months,
             // Niveaux
             get_niveaux,
             get_niveau,
@@ -597,6 +637,13 @@ pub fn run() {
             restore_database_from_file,
             // Test Data
             populate_test_data_command,
+            // Inscriptions
+            get_inscription_by_eleve,
+            get_inscriptions_by_classe,
+            create_inscription,
+            delete_inscription,
+            update_inscription_classe,
+            get_classes_for_select,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -17,8 +17,7 @@ export interface RecettesReport {
 
 export interface DepenseItem {
     date: string;
-    titre: string;
-    categorie: string;
+    motif: string;
     montant: number;
     beneficiaire: string;
 }
