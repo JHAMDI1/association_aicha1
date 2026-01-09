@@ -7,6 +7,7 @@ import { Search, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { elevesApi, EleveListItem } from "../eleves/api";
 import { inscriptionsApi, ClasseForSelect } from "./api";
+import { useTranslation } from "react-i18next";
 
 interface InscriptionModalProps {
     open: boolean;
@@ -17,6 +18,7 @@ interface InscriptionModalProps {
 }
 
 export function InscriptionModal({ open, onClose, onSuccess, preSelectedClassId, preSelectedEleve }: InscriptionModalProps) {
+    const { t } = useTranslation();
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [searchResults, setSearchResults] = useState<EleveListItem[]>([]);
@@ -121,17 +123,17 @@ export function InscriptionModal({ open, onClose, onSuccess, preSelectedClassId,
         <Dialog open={open} onOpenChange={onClose}>
             <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
-                    <DialogTitle>Inscrire un élève</DialogTitle>
+                    <DialogTitle>{t("students.addStudent")}</DialogTitle>
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {/* Student Search */}
                     <div className="space-y-2 relative">
-                        <Label>Rechercher un élève (Nom ou Matricule)</Label>
+                        <Label>{t("common.search")} ({t("students.lastName")})</Label>
                         <div className="relative">
                             <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                             <Input
-                                placeholder="Tapez pour rechercher..."
+                                placeholder={t("common.search") + "..."}
                                 className="pl-9"
                                 value={searchTerm}
                                 onChange={(e) => {
@@ -182,21 +184,21 @@ export function InscriptionModal({ open, onClose, onSuccess, preSelectedClassId,
 
                         {selectedEleve && (
                             <div className="text-xs text-green-600 font-medium flex items-center gap-1">
-                                ✓ Élève sélectionné: {selectedEleve.nom.toUpperCase()} {selectedEleve.prenom}
+                                ✓ {t("nav.students")}: {selectedEleve.nom.toUpperCase()} {selectedEleve.prenom}
                             </div>
                         )}
                     </div>
 
                     {/* Class Selection */}
                     <div className="space-y-2">
-                        <Label>Classe</Label>
+                        <Label>{t("classes.className")}</Label>
                         <select
                             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                             value={selectedClassId}
                             onChange={(e) => setSelectedClassId(e.target.value)}
                             required
                         >
-                            <option value="">Sélectionner une classe</option>
+                            <option value="">{t("common.select")}</option>
                             {classes.map((c) => (
                                 <option key={c.id} value={c.id}>
                                     {c.niveau_nom} - {c.nom}
@@ -207,11 +209,11 @@ export function InscriptionModal({ open, onClose, onSuccess, preSelectedClassId,
 
                     <DialogFooter>
                         <Button type="button" variant="outline" onClick={onClose}>
-                            Annuler
+                            {t("common.cancel")}
                         </Button>
                         <Button type="submit" disabled={loading || !selectedEleve || !selectedClassId}>
                             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Confirmer l'inscription
+                            {t("common.save")}
                         </Button>
                     </DialogFooter>
                 </form>

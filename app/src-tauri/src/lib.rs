@@ -7,6 +7,9 @@ mod errors;
 mod models;
 mod services;
 
+#[cfg(test)]
+mod tests;
+
 use models::{LoginResponse, CreateUserRequest, UpdateUserRequest, UserPublic, UserRole};
 use services::{Eleve, EleveListItem, CreateEleveRequest, UpdateEleveRequest};
 use services::niveaux_service::{Niveau, CreateNiveauRequest, UpdateNiveauRequest};
@@ -77,19 +80,34 @@ fn get_user(id: String) -> Result<UserPublic, String> {
 /// Create a new user (admin only)
 #[tauri::command]
 fn create_user(request: CreateUserRequest) -> Result<UserPublic, String> {
-    services::create_user(request).map_err(|e| e.to_string())
+    let session = CURRENT_USER.lock().unwrap();
+    let admin_id = session.as_ref()
+        .map(|u| u.id.clone())
+        .ok_or_else(|| "Non authentifié".to_string())?;
+
+    services::create_user(request, &admin_id).map_err(|e| e.to_string())
 }
 
 /// Update a user (admin only)
 #[tauri::command]
 fn update_user(id: String, request: UpdateUserRequest) -> Result<UserPublic, String> {
-    services::update_user(&id, request).map_err(|e| e.to_string())
+    let session = CURRENT_USER.lock().unwrap();
+    let admin_id = session.as_ref()
+        .map(|u| u.id.clone())
+        .ok_or_else(|| "Non authentifié".to_string())?;
+
+    services::update_user(&id, request, &admin_id).map_err(|e| e.to_string())
 }
 
 /// Delete a user (admin only)
 #[tauri::command]
 fn delete_user(id: String) -> Result<String, String> {
-    services::delete_user(&id).map_err(|e| e.to_string())?;
+    let session = CURRENT_USER.lock().unwrap();
+    let admin_id = session.as_ref()
+        .map(|u| u.id.clone())
+        .ok_or_else(|| "Non authentifié".to_string())?;
+
+    services::delete_user(&id, &admin_id).map_err(|e| e.to_string())?;
     Ok("Utilisateur supprimé".to_string())
 }
 
@@ -112,19 +130,34 @@ fn get_eleve(id: String) -> Result<Eleve, String> {
 /// Create a new élève
 #[tauri::command]
 fn create_eleve(request: CreateEleveRequest) -> Result<Eleve, String> {
-    services::create_eleve(request).map_err(|e| e.to_string())
+    let session = CURRENT_USER.lock().unwrap();
+    let user_id = session.as_ref()
+        .map(|u| u.id.clone())
+        .ok_or_else(|| "Non authentifié".to_string())?;
+        
+    services::create_eleve(request, &user_id).map_err(|e| e.to_string())
 }
 
 /// Update an élève
 #[tauri::command]
 fn update_eleve(id: String, request: UpdateEleveRequest) -> Result<Eleve, String> {
-    services::update_eleve(&id, request).map_err(|e| e.to_string())
+    let session = CURRENT_USER.lock().unwrap();
+    let user_id = session.as_ref()
+        .map(|u| u.id.clone())
+        .ok_or_else(|| "Non authentifié".to_string())?;
+
+    services::update_eleve(&id, request, &user_id).map_err(|e: errors::AppError| e.to_string())
 }
 
 /// Delete an élève
 #[tauri::command]
 fn delete_eleve(id: String) -> Result<String, String> {
-    services::delete_eleve(&id).map_err(|e| e.to_string())?;
+    let session = CURRENT_USER.lock().unwrap();
+    let user_id = session.as_ref()
+        .map(|u| u.id.clone())
+        .ok_or_else(|| "Non authentifié".to_string())?;
+
+    services::delete_eleve(&id, &user_id).map_err(|e| e.to_string())?;
     Ok("Élève supprimé".to_string())
 }
 
@@ -266,7 +299,12 @@ fn get_all_recus_list() -> Result<Vec<RecuListItem>, String> {
 
 #[tauri::command]
 fn annuler_paiement(recu_id: String) -> Result<String, String> {
-    services::annuler_recu(&recu_id).map_err(|e| e.to_string())?;
+    let session = CURRENT_USER.lock().unwrap();
+    let user_id = session.as_ref()
+        .map(|u| u.id.clone())
+        .ok_or_else(|| "Non authentifié".to_string())?;
+
+    services::annuler_recu(&recu_id, &user_id).map_err(|e| e.to_string())?;
     Ok("Reçu annulé".to_string())
 }
 
@@ -319,7 +357,12 @@ fn rejeter_depense(depense_id: String, motif: Option<String>) -> Result<Depense,
 
 #[tauri::command]
 fn delete_depense(id: String) -> Result<String, String> {
-    services::delete_depense(&id).map_err(|e| e.to_string())?;
+    let session = CURRENT_USER.lock().unwrap();
+    let user_id = session.as_ref()
+        .map(|u| u.id.clone())
+        .ok_or_else(|| "Non authentifié".to_string())?;
+
+    services::delete_depense(&id, &user_id).map_err(|e| e.to_string())?;
     Ok("Dépense supprimée".to_string())
 }
 
@@ -513,6 +556,23 @@ fn populate_test_data_command() -> Result<(), String> {
     services::populate_test_data().map_err(|e| e.to_string())
 }
 
+#[derive(serde::Serialize)]
+struct AuditLogResponse {
+    logs: Vec<services::AuditLog>,
+    total: i64,
+}
+
+#[tauri::command]
+fn get_audit_logs(filters: services::AuditLogFilters) -> Result<AuditLogResponse, String> {
+    let (logs, total) = services::get_logs(filters).map_err(|e: errors::AppError| e.to_string())?;
+    Ok(AuditLogResponse { logs, total })
+}
+
+#[tauri::command]
+fn backup_full_command(backup_dir: String) -> Result<(), String> {
+    services::backup_full(&backup_dir).map_err(|e| e.to_string())
+}
+
 // ==========================================
 // INSCRIPTIONS COMMANDS
 // ==========================================
@@ -554,6 +614,8 @@ pub fn run() {
     
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             // Auth commands
             login,
@@ -635,6 +697,9 @@ pub fn run() {
             // Backup
             backup_database_to_file,
             restore_database_from_file,
+            backup_full_command,
+            // Audit Logs
+            get_audit_logs,
             // Test Data
             populate_test_data_command,
             // Inscriptions

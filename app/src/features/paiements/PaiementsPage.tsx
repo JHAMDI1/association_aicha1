@@ -17,6 +17,8 @@ import { ExportButton } from "@/components/ExportButton";
 import { exportToCSV } from "@/lib/csvExport";
 import { exportToPDF } from "@/lib/pdfExport";
 import { getLogoBase64 } from "@/lib/logoLoader";
+import { useTranslation } from "react-i18next";
+import { EmptyState } from "@/components/EmptyState";
 
 interface PaiementsPageProps {
     initialData?: { eleveId: string, months: number[] } | null;
@@ -24,6 +26,7 @@ interface PaiementsPageProps {
 }
 
 export function PaiementsPage({ initialData, onClearInitialData }: PaiementsPageProps) {
+    const { t } = useTranslation();
     const [recus, setRecus] = useState<RecuListItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
@@ -41,7 +44,7 @@ export function PaiementsPage({ initialData, onClearInitialData }: PaiementsPage
             const data = await paiementsApi.getAllRecus();
             setRecus(data);
         } catch (error) {
-            toast.error("Erreur lors du chargement des reçus");
+            toast.error(t("common.error"));
             console.error(error);
         } finally {
             setLoading(false);
@@ -53,14 +56,14 @@ export function PaiementsPage({ initialData, onClearInitialData }: PaiementsPage
     }, []);
 
     const handleAnnuler = async (id: string, numero: string) => {
-        if (!confirm(`Êtes-vous sûr d'annuler le reçu ${numero} ?`)) return;
+        if (!confirm(`${t("common.confirm")} - ${numero} ?`)) return;
 
         try {
             await paiementsApi.annulerPaiement(id);
-            toast.success("Reçu annulé");
+            toast.success(t("common.success"));
             fetchRecus();
         } catch (error) {
-            toast.error("Erreur lors de l'annulation");
+            toast.error(t("common.error"));
             console.error(error);
         }
     };
@@ -71,10 +74,10 @@ export function PaiementsPage({ initialData, onClearInitialData }: PaiementsPage
 
     const getEtatBadge = (etat: string) => {
         if (etat === "VALIDE") {
-            return <span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-700">Validé</span>;
+            return <span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-700">{t("expenses.approved")}</span>;
         }
         if (etat === "ANNULE") {
-            return <span className="px-2 py-1 rounded-full text-xs bg-red-100 text-red-700">Annulé</span>;
+            return <span className="px-2 py-1 rounded-full text-xs bg-red-100 text-red-700">{t("common.cancel")}</span>;
         }
         return <span className="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-700">{etat}</span>;
     };
@@ -91,18 +94,20 @@ export function PaiementsPage({ initialData, onClearInitialData }: PaiementsPage
     };
 
     const exportColumns = [
-        { header: "N° Reçu", dataKey: "numero" },
+        { header: t("payments.receiptNumber"), dataKey: "numero" },
         { header: "Carnet / R.Phys", dataKey: "carnet_full" },
         { header: "Date", dataKey: "date_display" },
-        { header: "Élève / Donneur", dataKey: "eleve_nom_complet" },
-        { header: "Type", dataKey: "type_paiement" },
-        { header: "Montant (DH)", dataKey: "montant_display" },
-        { header: "Statut", dataKey: "etat" },
+        { header: t("nav.students"), dataKey: "eleve_nom_complet" },
+        { header: t("payments.paymentType"), dataKey: "type_paiement" },
+        { header: t("payments.amount") + " (DH)", dataKey: "montant_display" },
+        { header: t("expenses.status"), dataKey: "etat" },
     ];
 
     const handleExportCSV = () => {
         exportToCSV({
             filename: `paiements_aicha_${new Date().toISOString().split('T')[0]}`,
+            title: t("payments.title"),
+            subtitle: `${new Date().toLocaleDateString("fr-FR")} - ${recus.length} ${t("payments.receiptNumber")}`,
             data: getExportData(),
             columns: exportColumns
         });
@@ -114,13 +119,13 @@ export function PaiementsPage({ initialData, onClearInitialData }: PaiementsPage
 
         exportToPDF({
             filename: `paiements_aicha_${new Date().toISOString().split('T')[0]}.pdf`,
-            title: "Historique des Paiements",
-            subtitle: `Export du ${new Date().toLocaleDateString("fr-FR")} - ${recus.length} reçus`,
+            title: t("payments.title"),
+            subtitle: `${new Date().toLocaleDateString("fr-FR")} - ${recus.length} ${t("payments.receiptNumber")}`,
             data: getExportData(),
             columns: exportColumns,
             logo: logo || undefined,
             total: {
-                label: "TOTAL GENERAL",
+                label: "TOTAL",
                 dataKey: "montant_display",
                 value: `${totalAmount.toFixed(2)} DH`
             }
@@ -131,9 +136,9 @@ export function PaiementsPage({ initialData, onClearInitialData }: PaiementsPage
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <div>
-                    <h2 className="text-2xl font-bold tracking-tight">Paiements & Reçus</h2>
+                    <h2 className="text-2xl font-bold tracking-tight">{t("payments.title")}</h2>
                     <p className="text-muted-foreground">
-                        Gérez les paiements des élèves
+                        {t("payments.selectStudent")}
                     </p>
                 </div>
                 <div className="flex gap-2">
@@ -143,7 +148,7 @@ export function PaiementsPage({ initialData, onClearInitialData }: PaiementsPage
                         disabled={recus.length === 0}
                     />
                     <Button onClick={() => setModalOpen(true)}>
-                        <Plus className="mr-2 h-4 w-4" /> Nouveau Paiement
+                        <Plus className="mr-2 h-4 w-4" /> {t("payments.newPayment")}
                     </Button>
                 </div>
             </div>
@@ -151,29 +156,37 @@ export function PaiementsPage({ initialData, onClearInitialData }: PaiementsPage
             <Card>
                 <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
-                        <Receipt className="h-5 w-5" /> Historique des reçus
+                        <Receipt className="h-5 w-5" /> {t("payments.title")}
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>N° Reçu</TableHead>
+                                <TableHead>{t("payments.receiptNumber")}</TableHead>
                                 <TableHead>Carnet</TableHead>
                                 <TableHead>R. Phys</TableHead>
                                 <TableHead>Date</TableHead>
-                                <TableHead>Élève</TableHead>
-                                <TableHead>Type</TableHead>
-                                <TableHead className="text-right">Montant</TableHead>
-                                <TableHead>Statut</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
+                                <TableHead>{t("nav.students")}</TableHead>
+                                <TableHead>{t("payments.paymentType")}</TableHead>
+                                <TableHead className="text-right">{t("payments.amount")}</TableHead>
+                                <TableHead>{t("expenses.status")}</TableHead>
+                                <TableHead className="text-right">{t("common.actions")}</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {recus.length === 0 && !loading && (
                                 <TableRow>
-                                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                                        Aucun reçu enregistré.
+                                    <TableCell colSpan={9} className="py-12">
+                                        <EmptyState
+                                            title={t("payments.noPayments")}
+                                            icon={<Receipt className="w-10 h-10 text-gray-300" />}
+                                            action={
+                                                <Button onClick={() => setModalOpen(true)}>
+                                                    <Plus className="mr-2 h-4 w-4" /> {t("payments.newPayment")}
+                                                </Button>
+                                            }
+                                        />
                                     </TableCell>
                                 </TableRow>
                             )}

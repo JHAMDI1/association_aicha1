@@ -40,6 +40,7 @@ export interface CreateDepenseRequest {
     montant: number;
     type_depense: "FACTURE" | "AUTRE";
     commentaire?: string;
+    date_operation?: string; // Format YYYY-MM-DD HH:mm:ss
 }
 
 export interface DepenseStats {

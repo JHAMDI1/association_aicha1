@@ -48,6 +48,7 @@ pub struct CreateDepenseRequest {
     pub montant: f64,
     pub type_depense: String,  // FACTURE, AUTRE
     pub commentaire: Option<String>,
+    pub date_operation: Option<String>, // Custom invoice date
 }
 
 #[derive(Debug, Deserialize)]
@@ -178,24 +179,25 @@ pub fn get_all_depenses(etat_filter: Option<String>) -> Result<Vec<DepenseListIt
     Ok(depenses)
 }
 
+use crate::services::audit_service;
+use serde_json::json;
+
 pub fn create_depense(req: CreateDepenseRequest, user_id: &str, is_admin: bool) -> Result<Depense, AppError> {
     println!("[DEPENSE] 🔵 Starting create_depense for user: {}, type: {}, montant: {}", user_id, req.type_depense, req.montant);
     
     let conn = get_connection();
-    println!("[DEPENSE] ✅ Database connection obtained");
+    // ... existing logic ...
     
     let id = Uuid::new_v4().to_string();
     let numero = generate_depense_number(&conn)?;
-    println!("[DEPENSE] 🔢 Generated numero: {}", numero);
     
-    let now = Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
+    // Use provided date or current date
+    let now = req.date_operation.clone().unwrap_or_else(|| Utc::now().format("%Y-%m-%d %H:%M:%S").to_string());
     
     // Admin-created expenses are auto-validated
     let etat = if is_admin { "VALIDE" } else { "EN_ATTENTE" };
     let valide_par = if is_admin { Some(user_id) } else { None };
     let date_validation = if is_admin { Some(now.clone()) } else { None };
-    
-    println!("[DEPENSE] 📝 Inserting: id={}, beneficiaire={}, etat={}", id, req.beneficiaire, etat);
     
     conn.execute(
         r#"
@@ -209,7 +211,18 @@ pub fn create_depense(req: CreateDepenseRequest, user_id: &str, is_admin: bool) 
         ]
     )?;
     
-    println!("[DEPENSE] ✅ Depense inserted successfully, id: {}", id);
+    // Log action
+    let _ = audit_service::log_action(
+        user_id,
+        "CREATION",
+        "DEPENSE",
+        Some(&id),
+        Some(json!({
+            "montant": req.montant,
+            "numero": numero,
+            "beneficiaire": req.beneficiaire
+        }))
+    );
     
     get_depense_by_id_internal(&conn, &id)
 }
@@ -229,6 +242,15 @@ pub fn valider_depense(depense_id: &str, admin_id: &str) -> Result<Depense, AppE
         "UPDATE depenses SET etat = 'VALIDE', valide_par = ?, date_validation = ? WHERE id = ?",
         params![admin_id, now, depense_id]
     )?;
+    
+    // Log action
+    let _ = audit_service::log_action(
+        admin_id,
+        "VALIDATION",
+        "DEPENSE",
+        Some(depense_id),
+        None
+    );
     
     get_depense_by_id_internal(&conn, depense_id)
 }
@@ -250,10 +272,19 @@ pub fn rejeter_depense(depense_id: &str, admin_id: &str, motif_rejet: Option<Str
         params![admin_id, now, commentaire, depense_id]
     )?;
     
+    // Log action
+    let _ = audit_service::log_action(
+        admin_id,
+        "REJET",
+        "DEPENSE",
+        Some(depense_id),
+        None
+    );
+    
     get_depense_by_id_internal(&conn, depense_id)
 }
 
-pub fn delete_depense(depense_id: &str) -> Result<(), AppError> {
+pub fn delete_depense(depense_id: &str, user_id: &str) -> Result<(), AppError> {
     let conn = get_connection();
     
     // Only allow deleting draft or rejected expenses
@@ -263,6 +294,16 @@ pub fn delete_depense(depense_id: &str) -> Result<(), AppError> {
     }
     
     conn.execute("DELETE FROM depenses WHERE id = ?", params![depense_id])?;
+
+    // Log action
+    let _ = audit_service::log_action(
+        user_id,
+        "SUPPRESSION",
+        "DEPENSE",
+        Some(depense_id),
+        None
+    );
+
     Ok(())
 }
 

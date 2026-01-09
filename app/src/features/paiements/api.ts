@@ -30,6 +30,7 @@ export interface CreatePaiementRequest {
     numero_recu_physique?: string;
     source_type?: "ELEVE" | "DONNEUR" | "ANONYME";
     donneur_id?: string;
+    date_operation?: string; // Format YYYY-MM-DD HH:mm:ss
 }
 
 export interface Recu {

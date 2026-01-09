@@ -74,6 +74,9 @@ export function PaiementModal({ open, onClose, onSuccess, initialData }: Paiemen
     const [numeroCarnet, setNumeroCarnet] = useState("");
     const [numeroRecu, setNumeroRecu] = useState("");
 
+    // Default to today
+    const [dateOperation, setDateOperation] = useState(new Date().toISOString().split("T")[0]);
+
     const anneeOptions = [
         `${academicStartYear - 1}-${academicStartYear}`, // Previous year (useful for late payments)
         `${academicStartYear}-${academicStartYear + 1}`, // Current
@@ -210,6 +213,22 @@ export function PaiementModal({ open, onClose, onSuccess, initialData }: Paiemen
             return;
         }
 
+        if (typePaiement === "MENSUALITE" && selectedMonths.length === 0) {
+            toast.error("Veuillez sélectionner au moins un mois");
+            return;
+        }
+
+        // New validation: N° Carnet and N° Reçu are mandatory
+        if (!numeroCarnet.trim()) {
+            toast.error("Le N° de carnet est obligatoire");
+            return;
+        }
+
+        if (!numeroRecu.trim()) {
+            toast.error("Le N° de reçu est obligatoire");
+            return;
+        }
+
         const request: CreatePaiementRequest = {
             eleve_id: selectedStudent.id,
             type_paiement: typePaiement,
@@ -220,6 +239,7 @@ export function PaiementModal({ open, onClose, onSuccess, initialData }: Paiemen
             commentaire: commentaire || undefined,
             numero_carnet: numeroCarnet || undefined,
             numero_recu_physique: numeroRecu || undefined,
+            date_operation: dateOperation ? `${dateOperation} 12:00:00` : undefined, // Add time to make it full datetime
         };
 
         try {
@@ -253,6 +273,7 @@ export function PaiementModal({ open, onClose, onSuccess, initialData }: Paiemen
         setCommentaire("");
         setNumeroCarnet("");
         setNumeroRecu("");
+        setDateOperation(new Date().toISOString().split("T")[0]);
         setLoadError(null);
         onClose();
     };
@@ -354,6 +375,16 @@ export function PaiementModal({ open, onClose, onSuccess, initialData }: Paiemen
                         </Card>
                     )}
 
+                    {/* Date Operation */}
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">Date de l'opération</label>
+                        <Input
+                            type="date"
+                            value={dateOperation}
+                            onChange={(e) => setDateOperation(e.target.value)}
+                        />
+                    </div>
+
                     {/* Payment Type & Mode */}
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
@@ -386,7 +417,7 @@ export function PaiementModal({ open, onClose, onSuccess, initialData }: Paiemen
 
                     {/* Manual Receipt Info */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium">N° Carnet (Facultatif)</label>
+                        <label className="text-sm font-medium">N° Carnet <span className="text-red-500">*</span></label>
                         <Input
                             placeholder="Ex: 15"
                             value={numeroCarnet}
@@ -395,7 +426,7 @@ export function PaiementModal({ open, onClose, onSuccess, initialData }: Paiemen
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-sm font-medium">N° Reçu (Facultatif)</label>
+                        <label className="text-sm font-medium">N° Reçu <span className="text-red-500">*</span></label>
                         <Input
                             placeholder="Ex: 001"
                             value={numeroRecu}

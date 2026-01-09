@@ -15,8 +15,10 @@ import {
 import { donneursApi, type DonneurListItem } from "./api";
 import { DonneurModal } from "./DonneurModal";
 import { DonModal } from "./DonModal";
+import { useTranslation } from "react-i18next";
 
 export function DonneursPage() {
+    const { t } = useTranslation();
     const [donneurs, setDonneurs] = useState<DonneurListItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
@@ -97,17 +99,17 @@ export function DonneursPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Donneurs</h1>
-                    <p className="text-gray-500">Gestion des donateurs externes</p>
+                    <h1 className="text-2xl font-bold text-gray-900">{t("nav.donors")}</h1>
+                    <p className="text-gray-500">{t("nav.donors")}</p>
                 </div>
                 <div className="flex gap-2">
                     <Button onClick={() => handleOpenDon()} variant="secondary" className="gap-2 text-green-700 bg-green-100 hover:bg-green-200 border border-green-200">
                         <Gift className="h-4 w-4" />
-                        Faire un don
+                        {t("common.add")}
                     </Button>
                     <Button onClick={() => setModalOpen(true)} className="gap-2">
                         <Plus className="h-4 w-4" />
-                        Nouveau Donneur
+                        {t("common.add")}
                     </Button>
                 </div>
             </div>
@@ -161,12 +163,12 @@ export function DonneursPage() {
             <Card>
                 <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
-                        <CardTitle>Liste des Donneurs</CardTitle>
+                        <CardTitle>{t("nav.donors")}</CardTitle>
                         <div className="relative w-64">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                             <Input
                                 type="text"
-                                placeholder="Rechercher..."
+                                placeholder={t("common.search") + "..."}
                                 value={searchQuery}
                                 onChange={(e) => handleSearch(e.target.value)}
                                 className="pl-9"
@@ -178,11 +180,11 @@ export function DonneursPage() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Nom</TableHead>
+                                <TableHead>{t("students.lastName")}</TableHead>
                                 <TableHead>Contact</TableHead>
-                                <TableHead className="text-right">Dons</TableHead>
+                                <TableHead className="text-right">{t("nav.donors")}</TableHead>
                                 <TableHead className="text-right">Total</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
+                                <TableHead className="text-right">{t("common.actions")}</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -191,14 +193,14 @@ export function DonneursPage() {
                                     <TableCell colSpan={5} className="text-center py-8">
                                         <div className="flex items-center justify-center gap-2">
                                             <div className="w-5 h-5 border-2 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
-                                            Chargement...
+                                            {t("common.loading")}
                                         </div>
                                     </TableCell>
                                 </TableRow>
                             ) : donneurs.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={5} className="text-center py-8 text-gray-500">
-                                        Aucun donneur enregistré
+                                        {t("students.noStudents")}
                                     </TableCell>
                                 </TableRow>
                             ) : (

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { reportsApi, RecettesReport, DepensesReport, BilanReport, InscriptionItem, LatePaymentStudent } from "./api";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
@@ -8,11 +9,13 @@ import { Label } from "../../components/ui/label";
 import { toast } from "sonner";
 import { Download, FileText } from "lucide-react";
 import { exportToPDF } from "../../lib/pdfExport";
+import { exportToExcel } from "../../lib/excelExport";
 import { getLogoBase64 } from "../../lib/logoLoader";
 
 type ReportType = "recettes" | "depenses" | "bilan" | "retards" | "inscriptions";
 
 export function ReportsPage() {
+    const { t } = useTranslation();
     const [reportType, setReportType] = useState<ReportType>("recettes");
     const [dateDebut, setDateDebut] = useState("");
     const [dateFin, setDateFin] = useState("");
@@ -21,7 +24,7 @@ export function ReportsPage() {
 
     const handleGenerate = async () => {
         if ((reportType === "recettes" || reportType === "depenses" || reportType === "bilan") && (!dateDebut || !dateFin)) {
-            toast.error("Veuillez sélectionner une plage de dates");
+            toast.error(t("reports.selectDateRange"));
             return;
         }
 
@@ -48,74 +51,146 @@ export function ReportsPage() {
             }
 
             setReportData(data);
-            toast.success("Rapport généré avec succès");
+            toast.success(t("reports.reportGenerated"));
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
-            toast.error(message || "Erreur lors de la génération");
+            toast.error(message || t("reports.generationError"));
             console.error("Report error:", error);
         } finally {
             setLoading(false);
         }
     };
 
-    const handleDownloadCSV = () => {
+    const handleDownloadExcel = async () => {
         if (!reportData) return;
-
-        let csv = "";
-        let filename = "";
 
         switch (reportType) {
             case "recettes":
-                csv = "Date,Nom,Prénom,Mois,Montant,Mode\n";
-                (reportData as RecettesReport).details.forEach((r) => {
-                    csv += `${r.date},${r.eleve_nom},${r.eleve_prenom},${r.mois},${r.montant},${r.mode_paiement}\n`;
-                });
-                csv += `\nTotal,,,,,${(reportData as RecettesReport).total}`;
-                filename = `recettes_${dateDebut}_${dateFin}.csv`;
+                {
+                    const rData = reportData as RecettesReport;
+                    await exportToExcel({
+                        title: t("reports.reportTitleIncome"),
+                        subtitle: `${t("reports.period")} ${dateDebut} - ${dateFin}`,
+                        data: rData.details.map(r => ({
+                            date: r.date.split("T")[0],
+                            eleve: `${r.eleve_prenom} ${r.eleve_nom}`,
+                            mois: r.mois.toString(),
+                            montant: `${r.montant.toFixed(2)} DH`,
+                            mode: r.mode_paiement,
+                        })),
+                        columns: [
+                            { header: t("common.date"), key: "date", width: 15 },
+                            { header: t("students.firstName"), key: "eleve", width: 25 },
+                            { header: t("payments.month"), key: "mois", width: 10 },
+                            { header: t("payments.amount"), key: "montant", width: 15 },
+                            { header: t("payments.paymentType"), key: "mode", width: 15 },
+                        ],
+                        filename: `recettes_${dateDebut}_${dateFin}.xlsx`,
+                        total: {
+                            label: t("reports.totalPeriod"),
+                            key: "montant",
+                            value: `${rData.total.toFixed(2)} DH`
+                        }
+                    });
+                }
                 break;
 
             case "depenses":
-                csv = "Date,Motif,Montant,Bénéficiaire\n";
-                (reportData as DepensesReport).details.forEach((d) => {
-                    csv += `${d.date},${d.motif},${d.montant},${d.beneficiaire}\n`;
-                });
-                csv += `\nTotal,,,${(reportData as DepensesReport).total}`;
-                filename = `depenses_${dateDebut}_${dateFin}.csv`;
+                {
+                    const dData = reportData as DepensesReport;
+                    await exportToExcel({
+                        title: t("reports.reportTitleExpenses"),
+                        subtitle: `${t("reports.period")} ${dateDebut} - ${dateFin}`,
+                        data: dData.details.map(d => ({
+                            date: d.date,
+                            motif: d.motif,
+                            montant: `${d.montant.toFixed(2)} DH`,
+                            beneficiaire: d.beneficiaire,
+                        })),
+                        columns: [
+                            { header: t("common.date"), key: "date", width: 15 },
+                            { header: t("expenses.reason"), key: "motif", width: 30 },
+                            { header: t("expenses.amount"), key: "montant", width: 15 },
+                            { header: t("expenses.beneficiary"), key: "beneficiaire", width: 25 },
+                        ],
+                        filename: `depenses_${dateDebut}_${dateFin}.xlsx`,
+                        total: {
+                            label: t("reports.totalPeriod"),
+                            key: "montant",
+                            value: `${dData.total.toFixed(2)} DH`
+                        }
+                    });
+                }
                 break;
 
             case "bilan":
-                const bilan = reportData as BilanReport;
-                csv = "Type,Montant\n";
-                csv += `Recettes,${bilan.recettes}\n`;
-                csv += `Dépenses,${bilan.depenses}\n`;
-                csv += `Solde,${bilan.solde}\n`;
-                filename = `bilan_${dateDebut}_${dateFin}.csv`;
+                {
+                    const bData = reportData as BilanReport;
+                    await exportToExcel({
+                        title: t("reports.reportTitleBalance"),
+                        subtitle: `${t("reports.period")} ${bData.periode}`,
+                        data: [
+                            { type: t("reports.income"), montant: `${bData.recettes.toFixed(2)} DH` },
+                            { type: t("reports.expenses"), montant: `${bData.depenses.toFixed(2)} DH` },
+                            { type: t("reports.balance"), montant: `${bData.solde.toFixed(2)} DH` },
+                        ],
+                        columns: [
+                            { header: "Type", key: "type", width: 25 },
+                            { header: t("payments.amount"), key: "montant", width: 20 },
+                        ],
+                        filename: `bilan_${dateDebut}_${dateFin}.xlsx`,
+                    });
+                }
                 break;
 
             case "retards":
-                csv = "Nom,Prénom,Classe,Mois impayés,Montant dû\n";
-                (reportData as LatePaymentStudent[]).forEach((s) => {
-                    csv += `${s.nom},${s.prenom},${s.classe},${s.mois_impayes},${s.montant_du}\n`;
-                });
-                filename = "retards_paiement.csv";
+                {
+                    const lData = reportData as LatePaymentStudent[];
+                    await exportToExcel({
+                        title: t("reports.reportTitleLate"),
+                        subtitle: new Date().toLocaleDateString("fr-FR"),
+                        data: lData.map(s => ({
+                            nom: s.nom,
+                            prenom: s.prenom,
+                            classe: s.classe,
+                            mois: s.mois_impayes.toString(),
+                            montant: `${s.montant_du.toFixed(2)} DH`,
+                        })),
+                        columns: [
+                            { header: t("students.lastName"), key: "nom", width: 20 },
+                            { header: t("students.firstName"), key: "prenom", width: 20 },
+                            { header: t("students.class"), key: "classe", width: 15 },
+                            { header: t("dashboard.unpaidMonths"), key: "mois", width: 18 },
+                            { header: t("dashboard.dueAmount"), key: "montant", width: 18 },
+                        ],
+                        filename: "retards_paiement.xlsx",
+                    });
+                }
                 break;
 
             case "inscriptions":
-                csv = "Classe,Nb Élèves,Élèves\n";
-                (reportData as InscriptionItem[]).forEach((c) => {
-                    csv += `${c.classe},${c.nb_eleves},"${c.eleves.join(", ")}"\n`;
-                });
-                filename = "inscriptions.csv";
+                {
+                    const iData = reportData as InscriptionItem[];
+                    await exportToExcel({
+                        title: t("reports.reportTitleClasses"),
+                        subtitle: new Date().toLocaleDateString("fr-FR"),
+                        data: iData.map(c => ({
+                            classe: c.classe,
+                            nombre: c.nb_eleves.toString(),
+                            eleves: c.eleves.join(", "),
+                        })),
+                        columns: [
+                            { header: t("classes.className"), key: "classe", width: 20 },
+                            { header: t("classes.title"), key: "nombre", width: 15 },
+                            { header: t("reports.classes"), key: "eleves", width: 50 },
+                        ],
+                        filename: "inscriptions.xlsx",
+                    });
+                }
                 break;
         }
 
-        // Download CSV
-        const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = filename;
-        link.click();
-        toast.success("Fichier CSV téléchargé");
+        toast.success(t("reports.csvDownloaded"));
     };
 
     const handleDownloadPDF = async () => {
@@ -128,10 +203,8 @@ export function ReportsPage() {
             case "recettes":
                 exportToPDF({
                     ...commonOptions,
-                    title: "Rapport des Recettes",
-                    // ... rest of the code is handled in next chunks or stays same (wait, careful with overwrite)
-
-                    subtitle: `P\u00e9riode: ${dateDebut} au ${dateFin}`,
+                    title: t("reports.reportTitleIncome"),
+                    subtitle: `${t("reports.period")} ${dateDebut} - ${dateFin}`,
                     data: (reportData as RecettesReport).details.map(r => ({
                         date: r.date.split("T")[0],
                         eleve: `${r.eleve_prenom} ${r.eleve_nom}`,
@@ -140,15 +213,15 @@ export function ReportsPage() {
                         mode: r.mode_paiement,
                     })),
                     columns: [
-                        { header: "Date", dataKey: "date" },
-                        { header: "\u00c9l\u00e8ve", dataKey: "eleve" },
-                        { header: "Mois", dataKey: "mois" },
-                        { header: "Montant", dataKey: "montant" },
-                        { header: "Mode", dataKey: "mode" },
+                        { header: t("common.date"), dataKey: "date" },
+                        { header: t("students.firstName"), dataKey: "eleve" },
+                        { header: t("payments.month"), dataKey: "mois" },
+                        { header: t("payments.amount"), dataKey: "montant" },
+                        { header: t("payments.paymentType"), dataKey: "mode" },
                     ],
                     filename: `recettes_${dateDebut}_${dateFin}.pdf`,
                     total: {
-                        label: "TOTAL PÉRIODE",
+                        label: t("reports.totalPeriod"),
                         dataKey: "montant",
                         value: `${(reportData as RecettesReport).total.toFixed(2)} DH`
                     }
@@ -157,8 +230,8 @@ export function ReportsPage() {
 
             case "depenses":
                 exportToPDF({
-                    title: "Rapport des D\u00e9penses",
-                    subtitle: `P\u00e9riode: ${dateDebut} au ${dateFin}`,
+                    title: t("reports.reportTitleExpenses"),
+                    subtitle: `${t("reports.period")} ${dateDebut} - ${dateFin}`,
                     data: (reportData as DepensesReport).details.map(d => ({
                         date: d.date,
                         motif: d.motif,
@@ -166,14 +239,14 @@ export function ReportsPage() {
                         beneficiaire: d.beneficiaire,
                     })),
                     columns: [
-                        { header: "Date", dataKey: "date" },
-                        { header: "Motif", dataKey: "motif" },
-                        { header: "Montant", dataKey: "montant" },
-                        { header: "B\u00e9n\u00e9ficiaire", dataKey: "beneficiaire" },
+                        { header: t("common.date"), dataKey: "date" },
+                        { header: t("expenses.reason"), dataKey: "motif" },
+                        { header: t("expenses.amount"), dataKey: "montant" },
+                        { header: t("expenses.beneficiary"), dataKey: "beneficiaire" },
                     ],
                     filename: `depenses_${dateDebut}_${dateFin}.pdf`,
                     total: {
-                        label: "TOTAL PÉRIODE",
+                        label: t("reports.totalPeriod"),
                         dataKey: "montant",
                         value: `${(reportData as DepensesReport).total.toFixed(2)} DH`
                     }
@@ -183,16 +256,16 @@ export function ReportsPage() {
             case "bilan":
                 const bilan = reportData as BilanReport;
                 exportToPDF({
-                    title: "Bilan Financier",
-                    subtitle: `P\u00e9riode: ${bilan.periode}`,
+                    title: t("reports.reportTitleBalance"),
+                    subtitle: `${t("reports.period")} ${bilan.periode}`,
                     data: [
-                        { type: "Recettes", montant: `${bilan.recettes.toFixed(2)} DH` },
-                        { type: "D\u00e9penses", montant: `${bilan.depenses.toFixed(2)} DH` },
-                        { type: "Solde", montant: `${bilan.solde.toFixed(2)} DH` },
+                        { type: t("reports.income"), montant: `${bilan.recettes.toFixed(2)} DH` },
+                        { type: t("reports.expenses"), montant: `${bilan.depenses.toFixed(2)} DH` },
+                        { type: t("reports.balance"), montant: `${bilan.solde.toFixed(2)} DH` },
                     ],
                     columns: [
                         { header: "Type", dataKey: "type" },
-                        { header: "Montant", dataKey: "montant" },
+                        { header: t("payments.amount"), dataKey: "montant" },
                     ],
                     filename: `bilan_${dateDebut}_${dateFin}.pdf`,
                 });
@@ -200,7 +273,7 @@ export function ReportsPage() {
 
             case "retards":
                 exportToPDF({
-                    title: "Retards de Paiement",
+                    title: t("reports.reportTitleLate"),
                     subtitle: new Date().toLocaleDateString("fr-FR"),
                     data: (reportData as LatePaymentStudent[]).map(s => ({
                         nom: s.nom,
@@ -210,11 +283,11 @@ export function ReportsPage() {
                         montant: `${s.montant_du.toFixed(2)} DH`,
                     })),
                     columns: [
-                        { header: "Nom", dataKey: "nom" },
-                        { header: "Pr\u00e9nom", dataKey: "prenom" },
-                        { header: "Classe", dataKey: "classe" },
-                        { header: "Mois impay\u00e9s", dataKey: "mois" },
-                        { header: "Montant d\u00fb", dataKey: "montant" },
+                        { header: t("students.lastName"), dataKey: "nom" },
+                        { header: t("students.firstName"), dataKey: "prenom" },
+                        { header: t("students.class"), dataKey: "classe" },
+                        { header: t("dashboard.unpaidMonths"), dataKey: "mois" },
+                        { header: t("dashboard.dueAmount"), dataKey: "montant" },
                     ],
                     filename: "retards_paiement.pdf",
                 });
@@ -222,7 +295,7 @@ export function ReportsPage() {
 
             case "inscriptions":
                 exportToPDF({
-                    title: "Inscriptions par Classe",
+                    title: t("reports.reportTitleClasses"),
                     subtitle: new Date().toLocaleDateString("fr-FR"),
                     data: (reportData as InscriptionItem[]).map(c => ({
                         classe: c.classe,
@@ -230,16 +303,16 @@ export function ReportsPage() {
                         eleves: c.eleves.join(", "),
                     })),
                     columns: [
-                        { header: "Classe", dataKey: "classe" },
-                        { header: "Nb \u00c9l\u00e8ves", dataKey: "nombre" },
-                        { header: "\u00c9l\u00e8ves", dataKey: "eleves" },
+                        { header: t("classes.className"), dataKey: "classe" },
+                        { header: t("classes.title"), dataKey: "nombre" },
+                        { header: t("reports.classes"), dataKey: "eleves" },
                     ],
                     filename: "inscriptions.pdf",
                 });
                 break;
         }
 
-        toast.success("Fichier PDF t\u00e9l\u00e9charg\u00e9");
+        toast.success(t("reports.pdfDownloaded"));
     };
 
     const setPreset = (preset: string) => {
@@ -272,25 +345,25 @@ export function ReportsPage() {
 
     return (
         <div className="p-6 space-y-6">
-            <h1 className="text-3xl font-bold">Rapports & Statistiques</h1>
+            <h1 className="text-3xl font-bold">{t("nav.reports")}</h1>
 
             {/* Configuration */}
             <Card className="p-6 space-y-4">
-                <h2 className="text-xl font-semibold">Configuration du rapport</h2>
+                <h2 className="text-xl font-semibold">{t("reports.config")}</h2>
 
                 {/* Type selector */}
                 <div className="space-y-2">
-                    <Label>Type de rapport</Label>
+                    <Label>{t("reports.reportType")}</Label>
                     <Select value={reportType} onValueChange={(v) => setReportType(v as ReportType)}>
                         <SelectTrigger>
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="recettes">💰 Recettes</SelectItem>
-                            <SelectItem value="depenses">💸 Dépenses</SelectItem>
-                            <SelectItem value="bilan">📊 Bilan (Recettes vs Dépenses)</SelectItem>
-                            <SelectItem value="retards">⚠️ Retards de paiement</SelectItem>
-                            <SelectItem value="inscriptions">📚 Inscriptions par classe</SelectItem>
+                            <SelectItem value="recettes">💰 {t("reports.income")}</SelectItem>
+                            <SelectItem value="depenses">💸 {t("reports.expenses")}</SelectItem>
+                            <SelectItem value="bilan">📊 {t("reports.balance")}</SelectItem>
+                            <SelectItem value="retards">⚠️ {t("reports.latePayments")}</SelectItem>
+                            <SelectItem value="inscriptions">📚 {t("reports.classes")}</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
@@ -300,7 +373,7 @@ export function ReportsPage() {
                     <>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Date début</Label>
+                                <Label>{t("reports.startDate")}</Label>
                                 <Input
                                     type="date"
                                     value={dateDebut}
@@ -308,7 +381,7 @@ export function ReportsPage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label>Date fin</Label>
+                                <Label>{t("reports.endDate")}</Label>
                                 <Input
                                     type="date"
                                     value={dateFin}
@@ -320,20 +393,20 @@ export function ReportsPage() {
                         {/* Presets */}
                         <div className="flex gap-2">
                             <Button variant="outline" size="sm" onClick={() => setPreset("ce_mois")}>
-                                Ce mois
+                                {t("reports.thisMonth")}
                             </Button>
                             <Button variant="outline" size="sm" onClick={() => setPreset("mois_dernier")}>
-                                Mois dernier
+                                {t("reports.lastMonth")}
                             </Button>
                             <Button variant="outline" size="sm" onClick={() => setPreset("annee_scolaire")}>
-                                Année scolaire
+                                {t("reports.schoolYear")}
                             </Button>
                         </div>
                     </>
                 )}
 
                 <Button onClick={handleGenerate} disabled={loading} className="w-full">
-                    {loading ? "Génération..." : "Générer le rapport"}
+                    {loading ? t("common.loading") : t("reports.generate")}
                 </Button>
             </Card>
 
@@ -341,15 +414,15 @@ export function ReportsPage() {
             {reportData && (
                 <Card className="p-6 space-y-4">
                     <div className="flex items-center justify-between">
-                        <h2 className="text-xl font-semibold">Résultats</h2>
+                        <h2 className="text-xl font-semibold">{t("reports.results")}</h2>
                         <div className="flex gap-2">
                             <Button onClick={handleDownloadPDF} variant="outline">
                                 <FileText className="w-4 h-4 mr-2" />
-                                Export PDF
+                                {t("reports.exportPdf")}
                             </Button>
-                            <Button onClick={handleDownloadCSV} variant="outline">
+                            <Button onClick={handleDownloadExcel} variant="outline">
                                 <Download className="w-4 h-4 mr-2" />
-                                Export CSV
+                                {t("reports.exportCsv")}
                             </Button>
                         </div>
                     </div>
@@ -363,11 +436,11 @@ export function ReportsPage() {
                                 <table className="w-full text-sm">
                                     <thead>
                                         <tr className="border-b">
-                                            <th className="text-left pb-2">Date</th>
-                                            <th className="text-left pb-2">Élève</th>
-                                            <th className="text-left pb-2">Mois</th>
-                                            <th className="text-right pb-2">Montant</th>
-                                            <th className="text-left pb-2">Mode</th>
+                                            <th className="text-left pb-2">{t("students.registrationDate")}</th>
+                                            <th className="text-left pb-2">{t("students.title")}</th>
+                                            <th className="text-left pb-2">{t("payments.month")}</th>
+                                            <th className="text-right pb-2">{t("payments.amount")}</th>
+                                            <th className="text-left pb-2">{t("payments.paymentType")}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -395,10 +468,10 @@ export function ReportsPage() {
                                 <table className="w-full text-sm">
                                     <thead>
                                         <tr className="border-b">
-                                            <th className="text-left pb-2">Date</th>
-                                            <th className="text-left pb-2">Motif</th>
-                                            <th className="text-right pb-2">Montant</th>
-                                            <th className="text-left pb-2">Bénéficiaire</th>
+                                            <th className="text-left pb-2">{t("common.date")}</th>
+                                            <th className="text-left pb-2">{t("expenses.reason")}</th>
+                                            <th className="text-right pb-2">{t("expenses.amount")}</th>
+                                            <th className="text-left pb-2">{t("expenses.beneficiary")}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -420,21 +493,21 @@ export function ReportsPage() {
                         <div className="space-y-4">
                             <div className="grid grid-cols-3 gap-4">
                                 <Card className="p-4 bg-emerald-50">
-                                    <p className="text-sm text-gray-600">Recettes</p>
+                                    <p className="text-sm text-gray-600">{t("reports.income")}</p>
                                     <p className="text-2xl font-bold text-emerald-600">{(reportData as BilanReport).recettes.toFixed(2)} DH</p>
                                 </Card>
                                 <Card className="p-4 bg-red-50">
-                                    <p className="text-sm text-gray-600">Dépenses</p>
+                                    <p className="text-sm text-gray-600">{t("reports.expenses")}</p>
                                     <p className="text-2xl font-bold text-red-600">{(reportData as BilanReport).depenses.toFixed(2)} DH</p>
                                 </Card>
                                 <Card className={`p-4 ${(reportData as BilanReport).solde >= 0 ? 'bg-blue-50' : 'bg-red-50'}`}>
-                                    <p className="text-sm text-gray-600">Solde</p>
+                                    <p className="text-sm text-gray-600">{t("reports.balance")}</p>
                                     <p className={`text-2xl font-bold ${(reportData as BilanReport).solde >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
                                         {(reportData as BilanReport).solde.toFixed(2)} DH
                                     </p>
                                 </Card>
                             </div>
-                            <p className="text-sm text-gray-500">Période : {(reportData as BilanReport).periode}</p>
+                            <p className="text-sm text-gray-500">{(reportData as BilanReport).periode}</p>
                         </div>
                     )}
 
@@ -447,11 +520,11 @@ export function ReportsPage() {
                                 <table className="w-full text-sm">
                                     <thead>
                                         <tr className="border-b">
-                                            <th className="text-left pb-2">Nom</th>
-                                            <th className="text-left pb-2">Prénom</th>
-                                            <th className="text-left pb-2">Classe</th>
-                                            <th className="text-right pb-2">Mois impayés</th>
-                                            <th className="text-right pb-2">Montant dû</th>
+                                            <th className="text-left pb-2">{t("students.lastName")}</th>
+                                            <th className="text-left pb-2">{t("students.firstName")}</th>
+                                            <th className="text-left pb-2">{t("students.class")}</th>
+                                            <th className="text-right pb-2">{t("dashboard.unpaidMonths")}</th>
+                                            <th className="text-right pb-2">{t("dashboard.dueAmount")}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -479,9 +552,9 @@ export function ReportsPage() {
                                 <table className="w-full text-sm">
                                     <thead>
                                         <tr className="border-b">
-                                            <th className="text-left pb-2">Classe</th>
-                                            <th className="text-right pb-2">Nb Élèves</th>
-                                            <th className="text-left pb-2">Élèves</th>
+                                            <th className="text-left pb-2">{t("classes.className")}</th>
+                                            <th className="text-right pb-2">{t("classes.title")} </th>
+                                            <th className="text-left pb-2">{t("reports.classes")}</th>
                                         </tr>
                                     </thead>
                                     <tbody>

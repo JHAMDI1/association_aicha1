@@ -20,8 +20,10 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { api, Enseignant, CreateEnseignantRequest } from "./api"; // Removed unused imports
+import { useTranslation } from "react-i18next";
 
 export function EnseignantsPage() {
+    const { t } = useTranslation();
     const [enseignants, setEnseignants] = useState<Enseignant[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
@@ -123,13 +125,13 @@ export function EnseignantsPage() {
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h2 className="text-2xl font-bold tracking-tight">Enseignants</h2>
+                    <h2 className="text-2xl font-bold tracking-tight">{t("classes.teachers")}</h2>
                     <p className="text-muted-foreground">
-                        Gestion du corps professoral
+                        {t("classes.teachers")}
                     </p>
                 </div>
                 <Button onClick={openAddModal}>
-                    <Plus className="mr-2 h-4 w-4" /> Ajouter un enseignant
+                    <Plus className="mr-2 h-4 w-4" /> {t("common.add")}
                 </Button>
             </div>
 
@@ -137,12 +139,12 @@ export function EnseignantsPage() {
                 <CardHeader>
                     <div className="flex justify-between items-center">
                         <CardTitle className="text-lg flex items-center gap-2">
-                            <GraduationCap className="h-5 w-5" /> Liste des enseignants
+                            <GraduationCap className="h-5 w-5" /> {t("classes.teachers")}
                         </CardTitle>
                         <div className="relative w-64">
                             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                             <Input
-                                placeholder="Rechercher..."
+                                placeholder={t("common.search") + "..."}
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                                 className="pl-8"
@@ -154,18 +156,18 @@ export function EnseignantsPage() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Nom complet</TableHead>
-                                <TableHead>Spécialité</TableHead>
+                                <TableHead>{t("students.lastName")}</TableHead>
+                                <TableHead>{t("classes.specialty")}</TableHead>
                                 <TableHead>Contact</TableHead>
-                                <TableHead>Statut</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
+                                <TableHead>{t("expenses.status")}</TableHead>
+                                <TableHead className="text-right">{t("common.actions")}</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {enseignants.length === 0 && !loading && (
                                 <TableRow>
                                     <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                                        Aucun enseignant trouvé.
+                                        {t("classes.noTeachers")}
                                     </TableCell>
                                 </TableRow>
                             )}
@@ -192,7 +194,7 @@ export function EnseignantsPage() {
                                     </TableCell>
                                     <TableCell>
                                         <span className={`px-2 py-1 rounded-full text-xs ${ens.actif ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-                                            {ens.actif ? "Actif" : "Inactif"}
+                                            {ens.actif ? t("users.active") : t("users.inactive")}
                                         </span>
                                     </TableCell>
                                     <TableCell className="text-right space-x-2">
@@ -213,12 +215,12 @@ export function EnseignantsPage() {
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
                 <DialogContent className="sm:max-w-[500px]">
                     <DialogHeader>
-                        <DialogTitle>{editingEnseignant ? "Modifier l'enseignant" : "Ajouter un enseignant"}</DialogTitle>
+                        <DialogTitle>{editingEnseignant ? t("common.edit") : t("common.add")}</DialogTitle>
                     </DialogHeader>
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium">Nom</label>
+                                <label className="text-sm font-medium">{t("students.lastName")}</label>
                                 <Input
                                     value={formData.nom}
                                     onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
@@ -226,7 +228,7 @@ export function EnseignantsPage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium">Prénom</label>
+                                <label className="text-sm font-medium">{t("students.firstName")}</label>
                                 <Input
                                     value={formData.prenom}
                                     onChange={(e) => setFormData({ ...formData, prenom: e.target.value })}
@@ -236,7 +238,7 @@ export function EnseignantsPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Spécialité / Matière</label>
+                            <label className="text-sm font-medium">{t("classes.specialty")}</label>
                             <Input
                                 placeholder="Ex: Arabe, Français, Toutes..."
                                 value={formData.specialite || ""}
@@ -266,9 +268,9 @@ export function EnseignantsPage() {
 
                         <DialogFooter>
                             <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
-                                Annuler
+                                {t("common.cancel")}
                             </Button>
-                            <Button type="submit">Enregistrer</Button>
+                            <Button type="submit">{t("common.save")}</Button>
                         </DialogFooter>
                     </form>
                 </DialogContent>

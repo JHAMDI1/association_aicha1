@@ -31,8 +31,11 @@ import { ExportButton } from "@/components/ExportButton";
 import { exportToCSV } from "@/lib/csvExport";
 import { exportToPDF } from "@/lib/pdfExport";
 import { getLogoBase64 } from "@/lib/logoLoader";
+import { useTranslation } from "react-i18next";
+import { EmptyState } from "@/components/EmptyState";
 
 export function DepensesPage() {
+    const { t } = useTranslation();
     const { user } = useAuth();
     const isAdmin = user?.role === "ADMIN";
 
@@ -127,9 +130,9 @@ export function DepensesPage() {
 
     const getEtatBadge = (etat: string) => {
         const badges: Record<string, { bg: string; text: string; label: string }> = {
-            EN_ATTENTE: { bg: "bg-yellow-100", text: "text-yellow-700", label: "En attente" },
-            VALIDE: { bg: "bg-green-100", text: "text-green-700", label: "Validée" },
-            REJETE: { bg: "bg-red-100", text: "text-red-700", label: "Rejetée" },
+            EN_ATTENTE: { bg: "bg-yellow-100", text: "text-yellow-700", label: t("expenses.pending") },
+            VALIDE: { bg: "bg-green-100", text: "text-green-700", label: t("expenses.approved") },
+            REJETE: { bg: "bg-red-100", text: "text-red-700", label: t("expenses.rejected") },
             BROUILLON: { bg: "bg-gray-100", text: "text-gray-700", label: "Brouillon" },
         };
         const badge = badges[etat] || badges.BROUILLON;
@@ -154,16 +157,18 @@ export function DepensesPage() {
     const exportColumns = [
         { header: "N°", dataKey: "numero" },
         { header: "Date", dataKey: "date_display" },
-        { header: "Bénéficiaire", dataKey: "beneficiaire" },
-        { header: "Motif", dataKey: "motif" },
-        { header: "Type", dataKey: "type_depense" },
-        { header: "Montant (DH)", dataKey: "montant_display" },
-        { header: "Statut", dataKey: "etat" },
+        { header: t("expenses.beneficiary"), dataKey: "beneficiaire" },
+        { header: t("expenses.reason"), dataKey: "motif" },
+        { header: t("payments.paymentType"), dataKey: "type_depense" },
+        { header: t("payments.amount") + " (DH)", dataKey: "montant_display" },
+        { header: t("expenses.status"), dataKey: "etat" },
     ];
 
     const handleExportCSV = () => {
         exportToCSV({
             filename: `depenses_aicha_${new Date().toISOString().split('T')[0]}`,
+            title: t("expenses.title"),
+            subtitle: `${new Date().toLocaleDateString("fr-FR")} - ${depenses.length} ${t("nav.expenses")}`,
             data: getExportData(),
             columns: exportColumns
         });
@@ -175,8 +180,8 @@ export function DepensesPage() {
 
         exportToPDF({
             filename: `depenses_aicha_${new Date().toISOString().split('T')[0]}.pdf`,
-            title: "Liste des Dépenses",
-            subtitle: `Export du ${new Date().toLocaleDateString("fr-FR")} - ${depenses.length} dépenses`,
+            title: t("expenses.title"),
+            subtitle: `${new Date().toLocaleDateString("fr-FR")} - ${depenses.length} ${t("nav.expenses")}`,
             data: getExportData(),
             columns: exportColumns,
             logo: logo || undefined,
@@ -192,9 +197,9 @@ export function DepensesPage() {
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <div>
-                    <h2 className="text-2xl font-bold tracking-tight">Dépenses</h2>
+                    <h2 className="text-2xl font-bold tracking-tight">{t("expenses.title")}</h2>
                     <p className="text-muted-foreground">
-                        Gérez les ordres de paiement et factures
+                        {t("expenses.newExpense")}
                     </p>
                 </div>
                 <div className="flex gap-2">
@@ -204,7 +209,7 @@ export function DepensesPage() {
                         disabled={depenses.length === 0}
                     />
                     <Button onClick={() => setModalOpen(true)}>
-                        <Plus className="mr-2 h-4 w-4" /> Nouvelle Dépense
+                        <Plus className="mr-2 h-4 w-4" /> {t("expenses.newExpense")}
                     </Button>
                 </div>
             </div>
@@ -215,7 +220,7 @@ export function DepensesPage() {
                     <Card>
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium text-muted-foreground">
-                                Total ce mois
+                                {t("dashboard.expenses")}
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -227,7 +232,7 @@ export function DepensesPage() {
                     <Card>
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium text-muted-foreground">
-                                En attente
+                                {t("expenses.pending")}
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -242,17 +247,17 @@ export function DepensesPage() {
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle className="text-lg flex items-center gap-2">
-                        <Wallet className="h-5 w-5" /> Liste des dépenses
+                        <Wallet className="h-5 w-5" /> {t("expenses.title")}
                     </CardTitle>
                     <Select value={filter} onValueChange={setFilter}>
                         <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder="Filtrer par état" />
+                            <SelectValue placeholder={t("expenses.status")} />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="all">Toutes</SelectItem>
-                            <SelectItem value="EN_ATTENTE">En attente</SelectItem>
-                            <SelectItem value="VALIDE">Validées</SelectItem>
-                            <SelectItem value="REJETE">Rejetées</SelectItem>
+                            <SelectItem value="all">{t("common.all")}</SelectItem>
+                            <SelectItem value="EN_ATTENTE">{t("expenses.pending")}</SelectItem>
+                            <SelectItem value="VALIDE">{t("expenses.approved")}</SelectItem>
+                            <SelectItem value="REJETE">{t("expenses.rejected")}</SelectItem>
                         </SelectContent>
                     </Select>
                 </CardHeader>
@@ -262,20 +267,25 @@ export function DepensesPage() {
                             <TableRow>
                                 <TableHead>N°</TableHead>
                                 <TableHead>Date</TableHead>
-                                <TableHead>Bénéficiaire</TableHead>
-                                <TableHead>Motif</TableHead>
-                                <TableHead>Type</TableHead>
-                                <TableHead className="text-right">Montant</TableHead>
-                                <TableHead>Statut</TableHead>
-                                <TableHead>Preuve</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
+                                <TableHead>{t("expenses.beneficiary")}</TableHead>
+                                <TableHead>{t("expenses.reason")}</TableHead>
+                                <TableHead>{t("payments.paymentType")}</TableHead>
+                                <TableHead className="text-right">{t("payments.amount")}</TableHead>
+                                <TableHead>{t("expenses.status")}</TableHead>
+                                <TableHead>{t("expenses.proof")}</TableHead>
+                                <TableHead className="text-right">{t("common.actions")}</TableHead>
                             </TableRow>
                         </TableHeader>
+
+
                         <TableBody>
                             {depenses.length === 0 && !loading && (
                                 <TableRow>
-                                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                                        Aucune dépense enregistrée.
+                                    <TableCell colSpan={9} className="py-12">
+                                        <EmptyState
+                                            title={t("expenses.noExpenses")}
+                                            icon={<Wallet className="w-10 h-10 text-gray-300" />}
+                                        />
                                     </TableCell>
                                 </TableRow>
                             )}

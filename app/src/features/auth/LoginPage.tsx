@@ -3,9 +3,11 @@ import { useAuth } from "./AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useTranslation } from "react-i18next";
 import logoImage from "@/assets/logo.jpeg";
 
 export function LoginPage() {
+    const { t } = useTranslation();
     const { login, isLoading, error } = useAuth();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -16,7 +18,7 @@ export function LoginPage() {
         setLocalError("");
 
         if (!email || !password) {
-            setLocalError("Veuillez remplir tous les champs");
+            setLocalError(t("auth.loginError"));
             return;
         }
 
@@ -59,7 +61,7 @@ export function LoginPage() {
                     <form onSubmit={handleSubmit} className="space-y-5">
                         <div className="space-y-2">
                             <label htmlFor="email" className="text-sm font-medium text-gray-700">
-                                Email
+                                {t("auth.email")}
                             </label>
                             <Input
                                 id="email"
@@ -73,7 +75,7 @@ export function LoginPage() {
                         </div>
                         <div className="space-y-2">
                             <label htmlFor="password" className="text-sm font-medium text-gray-700">
-                                Mot de passe
+                                {t("auth.password")}
                             </label>
                             <Input
                                 id="password"
@@ -100,10 +102,10 @@ export function LoginPage() {
                             {isLoading ? (
                                 <span className="flex items-center gap-2">
                                     <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                                    Connexion...
+                                    {t("common.loading")}
                                 </span>
                             ) : (
-                                "Se connecter"
+                                t("auth.loginButton")
                             )}
                         </Button>
                     </form>
@@ -111,7 +113,7 @@ export function LoginPage() {
                     {/* Footer */}
                     <div className="mt-6 pt-4 border-t text-center">
                         <p className="text-xs text-gray-500">
-                            © 2025 Association Aicha - Tous droits réservés
+                            © 2025 Association Aicha
                         </p>
                     </div>
                 </CardContent>
@@ -119,3 +121,4 @@ export function LoginPage() {
         </div>
     );
 }
+

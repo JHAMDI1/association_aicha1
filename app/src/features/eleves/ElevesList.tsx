@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { elevesApi, EleveListItem } from "./api";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,6 +8,9 @@ import { ExportButton } from "@/components/ExportButton";
 import { exportToCSV } from "@/lib/csvExport";
 import { exportToPDF } from "@/lib/pdfExport";
 import { getLogoBase64 } from "@/lib/logoLoader";
+import { useTranslation } from "react-i18next";
+import { EmptyState } from "@/components/EmptyState";
+import { Users, UserPlus } from "lucide-react";
 
 interface ElevesListProps {
     onSelectEleve: (id: string) => void;
@@ -14,6 +18,7 @@ interface ElevesListProps {
 }
 
 export function ElevesList({ onSelectEleve, onAddEleve }: ElevesListProps) {
+    const { t } = useTranslation();
     const [eleves, setEleves] = useState<EleveListItem[]>([]);
     const [search, setSearch] = useState("");
     const [isLoading, setIsLoading] = useState(true);
@@ -45,22 +50,24 @@ export function ElevesList({ onSelectEleve, onAddEleve }: ElevesListProps) {
         return eleves.map(e => ({
             ...e,
             nom_complet: `${e.nom} ${e.prenom}`,
-            paiement_status: e.has_late_payments ? "Retard" : "À jour"
+            paiement_status: e.has_late_payments ? t("dashboard.latePayments") : t("payments.paid")
         }));
     }
 
     const exportColumns = [
         { header: "Matricule", dataKey: "code_matricule" },
-        { header: "Nom", dataKey: "nom" },
-        { header: "Prénom", dataKey: "prenom" },
-        { header: "Classe", dataKey: "classe_nom" },
-        { header: "Niveau", dataKey: "niveau_nom" },
-        { header: "Statut Paiement", dataKey: "paiement_status" },
+        { header: t("students.lastName"), dataKey: "nom" },
+        { header: t("students.firstName"), dataKey: "prenom" },
+        { header: t("students.class"), dataKey: "classe_nom" },
+        { header: t("nav.levels"), dataKey: "niveau_nom" },
+        { header: t("students.paymentStatus"), dataKey: "paiement_status" },
     ];
 
     const handleExportCSV = () => {
         exportToCSV({
             filename: `eleves_aicha_${new Date().toISOString().split('T')[0]}`,
+            title: t("students.title"),
+            subtitle: `${new Date().toLocaleDateString("fr-FR")} - ${eleves.length} ${t("nav.students")}`,
             data: getExportData(),
             columns: exportColumns
         });
@@ -70,8 +77,8 @@ export function ElevesList({ onSelectEleve, onAddEleve }: ElevesListProps) {
         const logo = await getLogoBase64();
         exportToPDF({
             filename: `eleves_aicha_${new Date().toISOString().split('T')[0]}.pdf`,
-            title: "Liste des Élèves",
-            subtitle: `Export du ${new Date().toLocaleDateString("fr-FR")} - ${eleves.length} élèves`,
+            title: t("students.title"),
+            subtitle: `${new Date().toLocaleDateString("fr-FR")} - ${eleves.length} ${t("nav.students")}`,
             data: getExportData(),
             columns: exportColumns,
             logo: logo || undefined
@@ -83,8 +90,8 @@ export function ElevesList({ onSelectEleve, onAddEleve }: ElevesListProps) {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Liste des Élèves</h2>
-                    <p className="text-sm text-muted-foreground">{eleves.length} élèves affichés</p>
+                    <h2 className="text-2xl font-bold text-gray-900">{t("students.title")}</h2>
+                    <p className="text-sm text-muted-foreground">{eleves.length} {t("nav.students")}</p>
                 </div>
 
                 <div className="flex gap-2">
@@ -95,7 +102,7 @@ export function ElevesList({ onSelectEleve, onAddEleve }: ElevesListProps) {
                     />
                     <Button onClick={onAddEleve} className="bg-emerald-600 hover:bg-emerald-700">
                         <span className="mr-2">+</span>
-                        Ajouter un Élève
+                        {t("students.addStudent")}
                     </Button>
                 </div>
             </div>
@@ -104,13 +111,13 @@ export function ElevesList({ onSelectEleve, onAddEleve }: ElevesListProps) {
             <form onSubmit={handleSearch} className="flex gap-2">
                 <Input
                     type="text"
-                    placeholder="Rechercher par nom, prénom ou matricule..."
+                    placeholder={t("common.search") + "..."}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="flex-1"
                 />
                 <Button type="submit" variant="outline">
-                    Rechercher
+                    {t("common.search")}
                 </Button>
                 {search && (
                     <Button
@@ -118,7 +125,7 @@ export function ElevesList({ onSelectEleve, onAddEleve }: ElevesListProps) {
                         variant="ghost"
                         onClick={() => { setSearch(""); loadEleves(); }}
                     >
-                        Effacer
+                        {t("common.close")}
                     </Button>
                 )}
             </form>
@@ -134,24 +141,27 @@ export function ElevesList({ onSelectEleve, onAddEleve }: ElevesListProps) {
             {isLoading && (
                 <div className="text-center py-8">
                     <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-                    <p className="text-gray-500">Chargement...</p>
+                    <p className="text-gray-500">{t("common.loading")}</p>
                 </div>
             )}
 
             {/* Empty State */}
-            {!isLoading && eleves.length === 0 && (
+            {!isLoading && eleves.length === 0 && !error && (
                 <Card>
-                    <CardContent className="py-12 text-center">
-                        <div className="text-5xl mb-4">🎓</div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Aucun élève trouvé</h3>
-                        <p className="text-gray-500 mb-4">
-                            {search ? "Essayez avec d'autres termes de recherche." : "Commencez par ajouter votre premier élève."}
-                        </p>
-                        {!search && (
-                            <Button onClick={onAddEleve} className="bg-emerald-600 hover:bg-emerald-700">
-                                Ajouter un Élève
-                            </Button>
-                        )}
+                    <CardContent className="p-6">
+                        <EmptyState
+                            icon={<Users className="w-12 h-12 text-gray-300" />}
+                            title={t("students.noStudents")}
+                            description={search ? t("common.search") : t("students.addStudent")}
+                            action={
+                                !search ? (
+                                    <Button onClick={onAddEleve} className="bg-emerald-600 hover:bg-emerald-700">
+                                        <UserPlus className="w-4 h-4 mr-2" />
+                                        {t("students.addStudent")}
+                                    </Button>
+                                ) : undefined
+                            }
+                        />
                     </CardContent>
                 </Card>
             )}
@@ -174,7 +184,7 @@ export function ElevesList({ onSelectEleve, onAddEleve }: ElevesListProps) {
                                     }`}>
                                     {eleve.photo_path ? (
                                         <img
-                                            src={eleve.photo_path}
+                                            src={convertFileSrc(eleve.photo_path)}
                                             alt={`${eleve.prenom} ${eleve.nom}`}
                                             className="w-full h-full rounded-full object-cover"
                                         />
@@ -198,7 +208,7 @@ export function ElevesList({ onSelectEleve, onAddEleve }: ElevesListProps) {
                                     </p>
                                     {eleve.has_late_payments && (
                                         <p className="text-xs text-red-600 font-medium mt-1">
-                                            ⚠️ Paiements en retard
+                                            ⚠️ {t("dashboard.latePayments")}
                                         </p>
                                     )}
                                 </div>
