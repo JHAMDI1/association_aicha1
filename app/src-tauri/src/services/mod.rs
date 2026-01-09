@@ -1,5 +1,5 @@
-mod auth_service;
-mod eleves_service;
+pub mod auth_service;
+pub mod eleves_service;
 pub mod niveaux_service;
 pub mod enseignants_service;
 pub mod classes_service;
@@ -69,8 +69,11 @@ pub use reports_service::{
     RecettesReport, DepensesReport, BilanReport, InscriptionItem
 };
 
+pub mod audit_service;
+pub use audit_service::{log_action, get_logs, AuditLog, AuditLogFilters};
+
 pub mod backup_service;
-pub use backup_service::{backup_database, restore_database};
+pub use backup_service::{backup_database, restore_database, backup_full};
 
 pub mod seed_service;
 pub use seed_service::populate_test_data;

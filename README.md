@@ -88,12 +88,21 @@ Ce projet met en œuvre une architecture moderne et performante :
 
 ## 📦 Installation & Développement
 
-### Pré-requis
+### Installation
+
+L'installateur Windows se trouve dans le dossier :
+`app/src-tauri/target/release/bundle/msi/Association Aicha_0.1.0_x64_en-US.msi`
+
+Double-cliquez simplement sur ce fichier pour installer l'application.
+
+### Développement
+
+#### Pré-requis
 - **Node.js** (v18+)
 - **Rust** (Dernière version stable)
 - **pnpm** (recommandé)
 
-### Lancer le projet localement
+#### Lancer le projet localement
 
 1. **Cloner le repo**
    ```bash

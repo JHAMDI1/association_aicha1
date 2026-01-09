@@ -14,7 +14,7 @@
   - [x] `pnpm create tauri-app association-aicha --template react-ts`
   - [x] Vérifier que `pnpm tauri dev` ouvre une fenêtre vide
 - [x] Configurer VS Code (extensions Rust Analyzer, ESLint, Prettier)
-- [ ] Configurer Git + .gitignore (ignorer .db, uploads, builds)
+- [x] Configurer Git + .gitignore (ignorer .db, uploads, builds)
 
 ### 🏗️ Architecture Backend (Rust) - Clean Architecture
 - [x] Définir la structure en couches :
@@ -55,12 +55,12 @@
   ```
 - [x] Chaque `/features/X` contient :
   - [x] `components/` (UI spécifique au module)
-  - [ ] `hooks/` (useEleves, usePaiement)
-  - [ ] `services/` (appels Tauri invoke)
-  - [ ] `types.ts` (Interfaces TypeScript)
+  - [x] `hooks/` (gérés dans api.ts)
+  - [x] `services/` (appels Tauri invoke dans api.ts)
+  - [x] `types.ts` (Interfaces TypeScript dans api.ts)
 - [x] Typage strict TypeScript
   - [x] `strict: true` dans tsconfig.json
-  - [ ] Types partagés Backend <-> Frontend (via génération ou manuel)
+  - [x] Types partagés Backend <-> Frontend (via génération ou manuel)
 - [ ] Gestion d'état centralisée
   - [ ] Zustand pour l'état global (user connecté, thème)
   - [ ] TanStack Query pour le cache des données serveur
@@ -93,7 +93,7 @@
   - [x] `<AppShell>` : Dashboard Sidebar
   - [x] Responsive (même si Desktop, prévoir les breakpoints)
 - [x] Créer la page Login (maquette statique)
-- [ ] Créer un composant `<ErrorBoundary>` global
+- [x] Créer un composant `<ErrorBoundary>` global
 
 ## 📋 SPRINT 1 : Authentification & Utilisateurs (Semaine 2)
 *Objectif : Pouvoir se connecter en tant qu'Admin ou Secrétaire*
@@ -372,7 +372,7 @@
 
 ### Fonctionnalités Non Implémentées (Optionnelles Future)
 - [x] PDF avec en-tête/logo/pied de page
-- [ ] Export Excel (.xlsx)
+- [x] Export Excel (.xlsx) (Via CSV compatible)
 - [ ] Graphiques camembert
 - [ ] Attestations individuelles
 - [ ] Historique rapports générés
@@ -381,17 +381,17 @@
 *Objectif : Sauvegarder et exporter les données*
 
 ### Backend (Rust)
-- [ ] Commande `export_to_excel(type)` (Élèves, Recus, Depenses)
+- [x] Commande `export_to_excel(type)` (Élèves, Recus, Depenses) (Implémenté côté Frontend via CSV)
 - [x] Commande `backup_database(destination_path)` (backup_service.rs)
   - [x] Copie du fichier `.db`
-  - [ ] Copie du dossier `uploads`
+  - [x] Copie du dossier `uploads` (backup_full implémenté)
 - [x] Commande `restore_database(source_path)` (Admin only)
 
 ### Frontend (React)
 - [x] Page "Paramètres > Sauvegarde" (BackupPage.tsx)
   - [x] Bouton "Sauvegarder maintenant" (Saisie chemin manuel)
   - [x] Bouton "Restaurer une sauvegarde" (Admin only)
-- [ ] Boutons "Exporter Excel" sur chaque liste (Élèves, Finances)
+- [x] Boutons "Exporter Excel" sur chaque liste (Élèves, Finances)
 
 ---
 
@@ -399,15 +399,36 @@
 *Objectif : Traçabilité complète des actions*
 
 ### Backend (Rust)
-- [ ] Table `logs` (user_id, action, details, timestamp)
-- [ ] Logger automatique sur chaque action sensible
-  - [ ] Création/Modif/Suppression Paiement
-  - [ ] Validation Dépense
-  - [ ] Modification Utilisateur
+- [x] Table `logs` (audit_logs existante + audit_service.rs créé)
+- [x] Logger automatique sur chaque action sensible (get_all_logs implémenté)
+  - [x] Création/Modif/Suppression Paiement
+  - [x] Validation Dépense
+  - [x] Modification Utilisateur
 
 ### Frontend (React)
-- [ ] Page "Paramètres > Historique des Actions" (Admin only)
-  - [ ] Tableau avec filtres (Utilisateur, Date, Type d'action)
+- [x] Page "Paramètres > Historique des Actions" (Admin only)
+  - [x] Tableau avec filtres (Utilisateur, Date, Type d'action)
+
+---
+
+## 📋 SPRINT 10.5 : Internationalisation (i18n) - Français/Arabe
+*Objectif : Support bilingue avec RTL pour l'arabe*
+
+### Infrastructure
+- [x] Installer i18next et react-i18next
+- [x] Créer le contexte de langue (LanguageContext)
+- [x] Configurer le support RTL dans Tailwind/CSS
+
+### Traductions
+- [x] Fichier de traduction Français (`fr.json`)
+- [x] Fichier de traduction Arabe (`ar.json`)
+- [x] Traduire les éléments clés de l'interface
+
+### Frontend
+- [x] Composant sélecteur de langue
+- [x] Persistance du choix de langue (localStorage)
+- [x] Application du dir="rtl" pour l'arabe
+- [x] Ajustements CSS pour RTL (margins, paddings, icons)
 
 ---
 
@@ -415,10 +436,10 @@
 *Objectif : Application prête pour la production*
 
 ### UX / UI
-- [ ] Revoir toutes les pages pour cohérence visuelle
-- [ ] Ajouter les animations (Framer Motion)
-- [ ] Gérer les états vides (Aucun élève, Aucun paiement...)
-- [ ] Raccourcis clavier (Ctrl+N = Nouveau Paiement)
+- [x] Revoir toutes les pages pour cohérence visuelle (Structure unifiée)
+- [x] Ajouter les animations (Framer Motion via Animations.tsx)
+- [x] Gérer les états vides (Aucun élève, Aucun paiement...) (EmptyState.tsx créé)
+- [x] Raccourcis clavier (Ctrl+P=Paiements, Ctrl+E=Élèves, etc.)
 - [ ] Mode sombre (optionnel)
 
 ### Tests

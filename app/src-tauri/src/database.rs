@@ -45,6 +45,8 @@ fn get_db_path() -> PathBuf {
 }
 
 /// Initialize the database and run migrations
+/// Initialize the database and run migrations
+#[cfg(not(test))]
 fn init_database() -> Result<Connection> {
     let db_path = get_db_path();
     let conn = Connection::open(&db_path)?;
@@ -59,6 +61,23 @@ fn init_database() -> Result<Connection> {
     seed_admin_user(&conn);
     
     println!("Database initialized at: {:?}", db_path);
+    Ok(conn)
+}
+
+/// Initialize an in-memory database for testing
+#[cfg(test)]
+fn init_database() -> Result<Connection> {
+    let conn = Connection::open_in_memory()?;
+    
+    // Enable foreign keys
+    conn.execute_batch("PRAGMA foreign_keys = ON;")?;
+    
+    // Run migrations
+    run_migrations(&conn)?;
+    
+    // Seed admin user (useful for auth tests)
+    seed_admin_user(&conn);
+    
     Ok(conn)
 }
 
@@ -88,6 +107,16 @@ fn run_migrations(conn: &Connection) -> Result<()> {
 
     // Migration 004: User Permissions
     conn.execute_batch(include_str!("../migrations/004_user_permissions.sql"))?;
+
+    // Migration 005: Audit Details
+    // Use execute separate from batch or ignore error if column exists to be safe, 
+    // but execute_batch with consistent SQL is fine if we assume linear migration.
+    // Since this is a fix for a missing column, we can try to add it.
+    // Check if column exists first to make it idempotent or just use ALTER TABLE which fails if exists.
+    // For simplicity in this dev phase, let's wrap in a check or just execute and ignore specific error?
+    // Proper way: "ALTER TABLE ADD COLUMN" throws if exists. 
+    // Let's do it safely.
+    let _ = conn.execute("ALTER TABLE audit_logs ADD COLUMN details TEXT", []);
 
     Ok(())
 }

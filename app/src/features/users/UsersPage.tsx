@@ -8,8 +8,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Badge } from "../../components/ui/badge";
 import { Plus, Pencil, Trash2, Shield } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 export function UsersPage() {
+    const { t } = useTranslation();
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [userModalOpen, setUserModalOpen] = useState(false);
@@ -77,31 +79,31 @@ export function UsersPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold">Gestion des Utilisateurs</h1>
+                    <h1 className="text-3xl font-bold">{t("nav.users")}</h1>
                     <p className="text-muted-foreground">
-                        {users.length} utilisateur{users.length > 1 ? "s" : ""}
+                        {users.length} {t("users.activeUsers")}
                     </p>
                 </div>
                 <Button onClick={() => setUserModalOpen(true)}>
                     <Plus className="w-4 h-4 mr-2" />
-                    Nouvel utilisateur
+                    {t("common.add")}
                 </Button>
             </div>
 
             {/* Users Table */}
             {loading ? (
                 <div className="text-center py-12 text-muted-foreground">
-                    Chargement...
+                    {t("common.loading")}
                 </div>
             ) : users.length === 0 ? (
                 <Card className="p-12 text-center">
-                    <h3 className="text-lg font-medium mb-2">Aucun utilisateur</h3>
+                    <h3 className="text-lg font-medium mb-2">{t("students.noStudents")}</h3>
                     <p className="text-muted-foreground mb-4">
-                        Commencez par créer un compte utilisateur
+                        {t("users.activeUsers")}
                     </p>
                     <Button onClick={() => setUserModalOpen(true)} variant="outline">
                         <Plus className="w-4 h-4 mr-2" />
-                        Créer un utilisateur
+                        {t("common.add")}
                     </Button>
                 </Card>
             ) : (
@@ -109,11 +111,11 @@ export function UsersPage() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Nom</TableHead>
-                                <TableHead>Email</TableHead>
-                                <TableHead>Role</TableHead>
-                                <TableHead>Statut</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
+                                <TableHead>{t("students.lastName")}</TableHead>
+                                <TableHead>{t("auth.email")}</TableHead>
+                                <TableHead>{t("users.role")}</TableHead>
+                                <TableHead>{t("expenses.status")}</TableHead>
+                                <TableHead className="text-right">{t("common.actions")}</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -127,12 +129,12 @@ export function UsersPage() {
                                     </TableCell>
                                     <TableCell>
                                         <Badge variant={user.role === "ADMIN" ? "default" : "secondary"}>
-                                            {user.role === "ADMIN" ? "Administrateur" : "Secrétaire"}
+                                            {user.role === "ADMIN" ? t("users.admin") : t("users.secretary")}
                                         </Badge>
                                     </TableCell>
                                     <TableCell>
                                         <Badge variant={user.actif ? "default" : "outline"}>
-                                            {user.actif ? "Actif" : "Inactif"}
+                                            {user.actif ? t("users.active") : t("users.inactive")}
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="text-right">

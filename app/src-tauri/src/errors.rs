@@ -18,6 +18,9 @@ pub enum AppError {
     
     #[error("Internal error: {0}")]
     InternalError(String),
+
+    #[error("Conflict: {0}")]
+    Conflict(String),
 }
 
 impl From<rusqlite::Error> for AppError {

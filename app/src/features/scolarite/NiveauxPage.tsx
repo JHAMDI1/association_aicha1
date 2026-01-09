@@ -20,8 +20,10 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { api, Niveau, CreateNiveauRequest } from "./api";
+import { useTranslation } from "react-i18next";
 
 export function NiveauxPage() {
+    const { t } = useTranslation();
     const [niveaux, setNiveaux] = useState<Niveau[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -112,36 +114,36 @@ export function NiveauxPage() {
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <div>
-                    <h2 className="text-2xl font-bold tracking-tight">Niveaux Scolaires</h2>
+                    <h2 className="text-2xl font-bold tracking-tight">{t("classes.levels")}</h2>
                     <p className="text-muted-foreground">
-                        Gérez les années et niveaux (ex: Année 1, Crèche...)
+                        {t("classes.level")}
                     </p>
                 </div>
                 <Button onClick={openAddModal}>
-                    <Plus className="mr-2 h-4 w-4" /> Ajouter un niveau
+                    <Plus className="mr-2 h-4 w-4" /> {t("common.add")}
                 </Button>
             </div>
 
             <Card>
                 <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
-                        <ArrowUpAZ className="h-5 w-5" /> Liste des niveaux
+                        <ArrowUpAZ className="h-5 w-5" /> {t("classes.levels")}
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead className="w-[100px]">Ordre</TableHead>
-                                <TableHead>Nom</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
+                                <TableHead className="w-[100px]">{t("classes.level")}</TableHead>
+                                <TableHead>{t("classes.level")}</TableHead>
+                                <TableHead className="text-right">{t("common.actions")}</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {niveaux.length === 0 && !loading && (
                                 <TableRow>
                                     <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
-                                        Aucun niveau défini. Commencez par en ajouter un.
+                                        {t("classes.noLevel")}
                                     </TableCell>
                                 </TableRow>
                             )}
@@ -167,11 +169,11 @@ export function NiveauxPage() {
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>{editingNiveau ? "Modifier le niveau" : "Ajouter un niveau"}</DialogTitle>
+                        <DialogTitle>{editingNiveau ? t("common.edit") : t("common.add")}</DialogTitle>
                     </DialogHeader>
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Nom du niveau</label>
+                            <label className="text-sm font-medium">{t("classes.level")}</label>
                             <Input
                                 placeholder="Ex: Année 1"
                                 value={formData.nom}
@@ -180,7 +182,7 @@ export function NiveauxPage() {
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Ordre d'affichage</label>
+                            <label className="text-sm font-medium">{t("classes.level")}</label>
                             <Input
                                 type="number"
                                 value={formData.ordre}
@@ -191,9 +193,9 @@ export function NiveauxPage() {
                         </div>
                         <DialogFooter>
                             <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
-                                Annuler
+                                {t("common.cancel")}
                             </Button>
-                            <Button type="submit">Enregistrer</Button>
+                            <Button type="submit">{t("common.save")}</Button>
                         </DialogFooter>
                     </form>
                 </DialogContent>

@@ -5,6 +5,7 @@ use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use chrono::Utc;
+use crate::services::audit_service;
 
 // ==========================================
 // TYPES & STRUCTURES
@@ -40,6 +41,7 @@ pub struct CreateRecuRequest {
     pub numero_recu_physique: Option<String>,
     pub source_type: Option<String>, // "ELEVE", "DONNEUR", "ANONYME"
     pub donneur_id: Option<String>,
+    pub date_operation: Option<String>, // Custom date
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -175,13 +177,14 @@ pub fn create_recu(request: CreateRecuRequest, user_id: &str) -> Result<RecuDeta
     println!("[PAYMENT] 🔵 Starting create_recu. Source: {}, Type: {}, Montant: {}", 
              source_type, request.type_paiement, request.montant_total);
              
-    let conn = get_connection();
+    let mut conn = get_connection();
+    let tx = conn.transaction()?;
 
     // VALIDATION LOGIC
     if source_type == "ELEVE" {
         if let Some(eleve_id) = &request.eleve_id {
              // Validate student exists
-            let student_exists: bool = conn.query_row(
+            let student_exists: bool = tx.query_row(
                 "SELECT COUNT(*) FROM eleves WHERE id = ? AND deleted_at IS NULL",
                 params![eleve_id],
                 |row| row.get::<_, i32>(0).map(|c| c > 0)
@@ -195,7 +198,7 @@ pub fn create_recu(request: CreateRecuRequest, user_id: &str) -> Result<RecuDeta
             if request.type_paiement == "MENSUALITE" {
                 for &mois in &request.mois_payes {
                     let calendar_year = if mois >= 9 { request.annee } else { request.annee + 1 };
-                    let already_paid: bool = conn.query_row(
+                    let already_paid: bool = tx.query_row(
                         "SELECT COUNT(*) FROM lignes_paiement WHERE eleve_id = ? AND mois = ? AND annee = ?",
                         params![eleve_id, mois, calendar_year],
                         |row| row.get::<_, i32>(0).map(|c| c > 0)
@@ -211,7 +214,7 @@ pub fn create_recu(request: CreateRecuRequest, user_id: &str) -> Result<RecuDeta
     } else if source_type == "DONNEUR" {
         if let Some(donneur_id) = &request.donneur_id {
              // Validate donor exists
-             let donor_exists: bool = conn.query_row(
+             let donor_exists: bool = tx.query_row(
                 "SELECT COUNT(*) FROM donneurs WHERE id = ?",
                 params![donneur_id],
                 |row| row.get::<_, i32>(0).map(|c| c > 0)
@@ -227,16 +230,16 @@ pub fn create_recu(request: CreateRecuRequest, user_id: &str) -> Result<RecuDeta
 
     // Generate receipt number
     println!("[PAYMENT] 🔢 Generating receipt number");
-    let numero = generate_receipt_number(&conn)?;
+    let numero = generate_receipt_number(&tx)?;
     
-    // Create receipt
     let recu_id = Uuid::new_v4().to_string();
-    let now = Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
+    // Use provided date or current date
+    let now = request.date_operation.clone().unwrap_or_else(|| Utc::now().format("%Y-%m-%d %H:%M:%S").to_string());
     let montant_total = request.montant_total;
 
     println!("[PAYMENT] 💾 Inserting receipt: {}", numero);
     
-    conn.execute(
+    tx.execute(
         "INSERT INTO recus (id, numero, date_operation, type_paiement, montant_total, mode_paiement, eleve_id, user_id, etat, commentaire, created_at, numero_carnet, numero_recu_physique, source_type, donneur_id)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'VALIDE', ?, ?, ?, ?, ?, ?)",
         params![
@@ -265,7 +268,7 @@ pub fn create_recu(request: CreateRecuRequest, user_id: &str) -> Result<RecuDeta
                 let ligne_id = Uuid::new_v4().to_string();
                 let calendar_year = if *mois >= 9 { request.annee } else { request.annee + 1 };
                 
-                conn.execute(
+                tx.execute(
                     "INSERT INTO lignes_paiement (id, recu_id, eleve_id, mois, annee, montant)
                      VALUES (?, ?, ?, ?, ?, ?)",
                     params![ligne_id, recu_id, eleve_id, mois, calendar_year, montant_unitaire]
@@ -286,7 +289,8 @@ pub fn create_recu(request: CreateRecuRequest, user_id: &str) -> Result<RecuDeta
     // We need to drop conn before calling get_recu_by_id OR make a version of get_recu that takes connection.
     
     // Dropping conn is safe here because we finished all inserts.
-    drop(conn);
+    tx.commit()?;
+    // drop(conn); // Explicitly dropping conn not strictly needed if commit consumes tx, but implicit drop happens at end usage.
     
     let result = get_recu_by_id(&recu_id);
     println!("[PAYMENT] ✅ Create recu completed successfully");
@@ -456,26 +460,27 @@ pub fn get_all_recus() -> Result<Vec<RecuListItem>, AppError> {
 }
 
 /// Cancel a receipt (Admin only)
-pub fn annuler_recu(recu_id: &str) -> Result<(), AppError> {
+pub fn annuler_recu(id: &str, user_id: &str) -> Result<(), AppError> {
     let conn = get_connection();
     
     // Update receipt status
-    let rows = conn.execute(
-        "UPDATE recus SET etat = 'ANNULE' WHERE id = ? AND etat = 'VALIDE'",
-        params![recu_id]
+    let count = conn.execute(
+        "UPDATE paiements SET etat = 'ANNULE' WHERE id = ?",
+        params![id]
     )?;
     
-    if rows == 0 {
-        return Err(AppError::NotFound("Reçu non trouvé ou déjà annulé".to_string()));
+    if count == 0 {
+        return Err(AppError::NotFound("Reçu non trouvé".to_string()));
     }
     
-    // Delete payment lines (to free up months)
-    conn.execute(
-        "DELETE FROM lignes_paiement WHERE recu_id = ?",
-        params![recu_id]
-    )?;
-    
-    // TODO: Add audit log entry
+    // Log action
+    let _ = audit_service::log_action(
+        user_id,
+        "ANNULATION",
+        "PAIEMENT",
+        Some(id),
+        None
+    );
     
     Ok(())
 }

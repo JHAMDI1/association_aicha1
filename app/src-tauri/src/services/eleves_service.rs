@@ -72,6 +72,17 @@ fn generate_matricule() -> String {
     format!("ELV-{}-{:04}", year, random)
 }
 
+/// Helper to resolve relative photo path to absolute path
+fn resolve_photo_path(path: Option<String>) -> Option<String> {
+    if let Some(p) = path {
+        let mut abs_path = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+        abs_path.push(&p); // p includes "photos/" prefix already
+        Some(abs_path.to_string_lossy().to_string())
+    } else {
+        None
+    }
+}
+
 /// Get all élèves with optional search
 pub fn get_all_eleves(search: Option<String>) -> Result<Vec<EleveListItem>, AppError> {
     let conn = get_connection();
@@ -112,7 +123,7 @@ pub fn get_all_eleves(search: Option<String>) -> Result<Vec<EleveListItem>, AppE
                 code_matricule: row.get(1)?,
                 nom: row.get(2)?,
                 prenom: row.get(3)?,
-                photo_path: row.get(4)?,
+                photo_path: resolve_photo_path(row.get(4)?),
                 classe_nom: row.get(5)?,
                 niveau_nom: row.get(6)?,
                 has_late_payments: false, // Will be set below
@@ -127,7 +138,7 @@ pub fn get_all_eleves(search: Option<String>) -> Result<Vec<EleveListItem>, AppE
                 code_matricule: row.get(1)?,
                 nom: row.get(2)?,
                 prenom: row.get(3)?,
-                photo_path: row.get(4)?,
+                photo_path: resolve_photo_path(row.get(4)?),
                 classe_nom: row.get(5)?,
                 niveau_nom: row.get(6)?,
                 has_late_payments: false, // Will be set below
@@ -235,7 +246,7 @@ pub fn get_eleve_by_id(id: &str) -> Result<Eleve, AppError> {
             prenom: row.get(3)?,
             date_naissance: row.get(4)?,
             sexe: row.get(5)?,
-            photo_path: row.get(6)?,
+            photo_path: resolve_photo_path(row.get(6)?),
             tuteur_nom: row.get(7)?,
             tuteur_tel: row.get(8)?,
             tuteur_cin: row.get(9)?,
@@ -247,103 +258,130 @@ pub fn get_eleve_by_id(id: &str) -> Result<Eleve, AppError> {
     Ok(eleve)
 }
 
+use crate::services::audit_service;
+use serde_json::json;
+use chrono::Utc;
+
 /// Create a new élève
-pub fn create_eleve(req: CreateEleveRequest) -> Result<Eleve, AppError> {
+pub fn create_eleve(request: CreateEleveRequest, user_id: &str) -> Result<Eleve, AppError> {
     let conn = get_connection();
     
-    let id = Uuid::new_v4().to_string();
     let matricule = generate_matricule();
+    let id = Uuid::new_v4().to_string();
+    let now = Utc::now().to_rfc3339();
     
     conn.execute(
-        r#"INSERT INTO eleves (id, code_matricule, nom, prenom, date_naissance, sexe, 
-                               tuteur_nom, tuteur_tel, tuteur_cin, adresse)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"#,
-        rusqlite::params![
-            id, matricule, req.nom, req.prenom, req.date_naissance, req.sexe,
-            req.tuteur_nom, req.tuteur_tel, req.tuteur_cin, req.adresse
-        ]
+        "INSERT INTO eleves (id, code_matricule, nom, prenom, date_naissance, sexe, 
+                            tuteur_nom, tuteur_tel, tuteur_cin, adresse, created_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+        params![
+            id, matricule, request.nom, request.prenom, request.date_naissance, 
+            request.sexe, request.tuteur_nom, request.tuteur_tel, request.tuteur_cin, 
+            request.adresse, now
+        ],
     )?;
     
-    get_eleve_by_id(&id)
+    let eleve = Eleve {
+        id: id.clone(),
+        code_matricule: matricule,
+        nom: request.nom,
+        prenom: request.prenom,
+        date_naissance: request.date_naissance,
+        sexe: request.sexe,
+        photo_path: None,
+        tuteur_nom: request.tuteur_nom,
+        tuteur_tel: request.tuteur_tel,
+        tuteur_cin: request.tuteur_cin,
+        adresse: request.adresse,
+        created_at: now,
+    };
+
+    // Log action
+    let _ = audit_service::log_action(
+        user_id,
+        "CREATION",
+        "ELEVE",
+        Some(&id),
+        Some(json!({
+            "nom": eleve.nom,
+            "prenom": eleve.prenom,
+            "matricule": eleve.code_matricule
+        }))
+    );
+    
+    Ok(eleve)
 }
 
-/// Update an existing élève
-pub fn update_eleve(id: &str, req: UpdateEleveRequest) -> Result<Eleve, AppError> {
+/// Update an élève
+pub fn update_eleve(id: &str, request: UpdateEleveRequest, user_id: &str) -> Result<Eleve, AppError> {
     let conn = get_connection();
     
-    // Check if élève exists
-    let _existing = get_eleve_by_id(id)?;
+    // Check if exists
+    let mut current: Eleve = get_eleve_by_id(id)?;
     
-    // Build dynamic update query
-    let mut updates = Vec::new();
+    // Build update query dynamically
+    let mut query = "UPDATE eleves SET ".to_string();
     let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+    let mut updates = Vec::new();
     
-    if let Some(nom) = &req.nom {
-        updates.push("nom = ?");
-        params.push(Box::new(nom.clone()));
-    }
-    if let Some(prenom) = &req.prenom {
-        updates.push("prenom = ?");
-        params.push(Box::new(prenom.clone()));
-    }
-    if let Some(date_naissance) = &req.date_naissance {
-        updates.push("date_naissance = ?");
-        params.push(Box::new(date_naissance.clone()));
-    }
-    if let Some(sexe) = &req.sexe {
-        updates.push("sexe = ?");
-        params.push(Box::new(sexe.clone()));
-    }
-    if let Some(photo_path) = &req.photo_path {
-        updates.push("photo_path = ?");
-        params.push(Box::new(photo_path.clone()));
-    }
-    if let Some(tuteur_nom) = &req.tuteur_nom {
-        updates.push("tuteur_nom = ?");
-        params.push(Box::new(tuteur_nom.clone()));
-    }
-    if let Some(tuteur_tel) = &req.tuteur_tel {
-        updates.push("tuteur_tel = ?");
-        params.push(Box::new(tuteur_tel.clone()));
-    }
-    if let Some(tuteur_cin) = &req.tuteur_cin {
-        updates.push("tuteur_cin = ?");
-        params.push(Box::new(tuteur_cin.clone()));
-    }
-    if let Some(adresse) = &req.adresse {
-        updates.push("adresse = ?");
-        params.push(Box::new(adresse.clone()));
-    }
+    if let Some(nom) = &request.nom { updates.push("nom = ?"); params.push(Box::new(nom.clone())); current.nom = nom.clone(); }
+    if let Some(prenom) = &request.prenom { updates.push("prenom = ?"); params.push(Box::new(prenom.clone())); current.prenom = prenom.clone(); }
+    if let Some(date) = &request.date_naissance { updates.push("date_naissance = ?"); params.push(Box::new(date.clone())); current.date_naissance = Some(date.clone()); }
+    if let Some(sexe) = &request.sexe { updates.push("sexe = ?"); params.push(Box::new(sexe.clone())); current.sexe = Some(sexe.clone()); }
+    if let Some(t_nom) = &request.tuteur_nom { updates.push("tuteur_nom = ?"); params.push(Box::new(t_nom.clone())); current.tuteur_nom = Some(t_nom.clone()); }
+    if let Some(t_tel) = &request.tuteur_tel { updates.push("tuteur_tel = ?"); params.push(Box::new(t_tel.clone())); current.tuteur_tel = Some(t_tel.clone()); }
+    if let Some(t_cin) = &request.tuteur_cin { updates.push("tuteur_cin = ?"); params.push(Box::new(t_cin.clone())); current.tuteur_cin = Some(t_cin.clone()); }
+    if let Some(addr) = &request.adresse { updates.push("adresse = ?"); params.push(Box::new(addr.clone())); current.adresse = Some(addr.clone()); }
     
     if updates.is_empty() {
-        return get_eleve_by_id(id);
+        return Ok(current);
     }
     
-    updates.push("updated_at = datetime('now')");
-    
-    let query = format!("UPDATE eleves SET {} WHERE id = ?", updates.join(", "));
+    query.push_str(&updates.join(", "));
+    query.push_str(" WHERE id = ?");
     params.push(Box::new(id.to_string()));
     
     let params_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
     conn.execute(&query, params_refs.as_slice())?;
     
-    get_eleve_by_id(id)
+    // Log action
+    let _ = audit_service::log_action(
+        user_id,
+        "MODIFICATION",
+        "ELEVE",
+        Some(id),
+        Some(json!({
+            "updated_fields": updates.len()
+        }))
+    );
+    
+    Ok(current)
 }
 
 /// Soft delete an élève
-pub fn delete_eleve(id: &str) -> Result<(), AppError> {
+pub fn delete_eleve(id: &str, user_id: &str) -> Result<(), AppError> {
     let conn = get_connection();
     
-    let rows = conn.execute(
-        "UPDATE eleves SET deleted_at = datetime('now') WHERE id = ? AND deleted_at IS NULL",
-        [id]
+    let now = Utc::now().to_rfc3339();
+    
+    let count = conn.execute(
+        "UPDATE eleves SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL",
+        params![now, id],
     )?;
     
-    if rows == 0 {
+    if count == 0 {
         return Err(AppError::NotFound("Élève non trouvé".to_string()));
     }
     
-    println!("[ELEVES] ✅ Élève deleted: {}", id);
+    // Log action
+    let _ = audit_service::log_action(
+        user_id,
+        "SUPPRESSION",
+        "ELEVE",
+        Some(id),
+        None
+    );
+    
     Ok(())
 }
 

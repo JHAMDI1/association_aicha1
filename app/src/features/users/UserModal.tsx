@@ -6,6 +6,7 @@ import { Input } from "../../components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { usersApi, CreateUserRequest, UpdateUserRequest } from "./api";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 interface UserModalProps {
     open: boolean;
@@ -15,6 +16,7 @@ interface UserModalProps {
 }
 
 export function UserModal({ open, onClose, onSuccess, userId }: UserModalProps) {
+    const { t } = useTranslation();
     const [nom, setNom] = useState("");
     const [prenom, setPrenom] = useState("");
     const [email, setEmail] = useState("");
@@ -117,22 +119,22 @@ export function UserModal({ open, onClose, onSuccess, userId }: UserModalProps) 
             <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
                     <DialogTitle>
-                        {isEditing ? "Modifier l'utilisateur" : "Nouvel utilisateur"}
+                        {isEditing ? t("users.editUser") : t("users.newUser")}
                     </DialogTitle>
                 </DialogHeader>
 
                 {loadingUser ? (
                     <div className="py-8 text-center text-muted-foreground">
-                        Chargement...
+                        {t("common.loading")}
                     </div>
                 ) : (
                     <div className="space-y-4 py-4">
                         {/* Nom */}
                         <div className="space-y-2">
-                            <Label htmlFor="nom">Nom *</Label>
+                            <Label htmlFor="nom">{t("students.lastName")} *</Label>
                             <Input
                                 id="nom"
-                                placeholder="Nom de famille"
+                                placeholder={t("students.lastName")}
                                 value={nom}
                                 onChange={(e) => setNom(e.target.value)}
                             />
@@ -140,10 +142,10 @@ export function UserModal({ open, onClose, onSuccess, userId }: UserModalProps) 
 
                         {/* Prénom */}
                         <div className="space-y-2">
-                            <Label htmlFor="prenom">Prénom *</Label>
+                            <Label htmlFor="prenom">{t("students.firstName")} *</Label>
                             <Input
                                 id="prenom"
-                                placeholder="Prénom"
+                                placeholder={t("students.firstName")}
                                 value={prenom}
                                 onChange={(e) => setPrenom(e.target.value)}
                             />
@@ -151,7 +153,7 @@ export function UserModal({ open, onClose, onSuccess, userId }: UserModalProps) 
 
                         {/* Email */}
                         <div className="space-y-2">
-                            <Label htmlFor="email">Email *</ Label>
+                            <Label htmlFor="email">{t("auth.email")} *</ Label>
                             <Input
                                 id="email"
                                 type="email"
@@ -164,7 +166,7 @@ export function UserModal({ open, onClose, onSuccess, userId }: UserModalProps) 
                         {/* Password */}
                         <div className="space-y-2">
                             <Label htmlFor="password">
-                                Mot de passe {isEditing && "(laisser vide pour ne pas changer)"}
+                                {t("auth.password")} {isEditing && `(${t("common.leaveEmptyToKeep")})`}
                             </Label>
                             <Input
                                 id="password"
@@ -177,14 +179,14 @@ export function UserModal({ open, onClose, onSuccess, userId }: UserModalProps) 
 
                         {/* Role */}
                         <div className="space-y-2">
-                            <Label htmlFor="role">Rôle *</Label>
+                            <Label htmlFor="role">{t("users.role")} *</Label>
                             <Select value={role} onValueChange={(v) => setRole(v as "ADMIN" | "SECRETAIRE")}>
                                 <SelectTrigger>
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="ADMIN">Administrateur</SelectItem>
-                                    <SelectItem value="SECRETAIRE">Secrétaire</SelectItem>
+                                    <SelectItem value="ADMIN">{t("users.admin")}</SelectItem>
+                                    <SelectItem value="SECRETAIRE">{t("users.secretary")}</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -194,10 +196,10 @@ export function UserModal({ open, onClose, onSuccess, userId }: UserModalProps) 
                 {/* Actions */}
                 <div className="flex justify-end gap-2">
                     <Button variant="outline" onClick={handleClose} disabled={loading || loadingUser}>
-                        Annuler
+                        {t("common.cancel")}
                     </Button>
                     <Button onClick={handleSubmit} disabled={loading || loadingUser}>
-                        {loading ? "Enregistrement..." : isEditing ? "Modifier" : "Créer"}
+                        {loading ? t("common.loading") : isEditing ? t("common.save") : t("common.add")}
                     </Button>
                 </div>
             </DialogContent>

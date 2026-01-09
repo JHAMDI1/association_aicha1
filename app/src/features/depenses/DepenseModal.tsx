@@ -27,6 +27,7 @@ export function DepenseModal({ open, onClose, onSuccess }: DepenseModalProps) {
     const [montant, setMontant] = useState("");
     const [typeDepense, setTypeDepense] = useState<"FACTURE" | "AUTRE">("AUTRE");
     const [commentaire, setCommentaire] = useState("");
+    const [dateOperation, setDateOperation] = useState(new Date().toISOString().split("T")[0]);
     const [loading, setLoading] = useState(false);
 
     // Photo upload
@@ -85,6 +86,7 @@ export function DepenseModal({ open, onClose, onSuccess }: DepenseModalProps) {
             montant: montantNum,
             type_depense: typeDepense,
             commentaire: commentaire.trim() || undefined,
+            date_operation: dateOperation ? `${dateOperation} 12:00:00` : undefined,
         };
 
         try {
@@ -141,6 +143,15 @@ export function DepenseModal({ open, onClose, onSuccess }: DepenseModalProps) {
                 </DialogHeader>
 
                 <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">Date Facture</label>
+                        <Input
+                            type="date"
+                            value={dateOperation}
+                            onChange={(e) => setDateOperation(e.target.value)}
+                        />
+                    </div>
+
                     <div className="space-y-2">
                         <label className="text-sm font-medium">Bénéficiaire *</label>
                         <Input

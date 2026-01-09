@@ -6,8 +6,10 @@ import { Card } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Mail, MailOpen, Trash2, Plus } from "lucide-react";
 import { NewMessageModal } from "./NewMessageModal";
+import { useTranslation } from "react-i18next";
 
 export function MessagesPage() {
+    const { t } = useTranslation();
     const [messages, setMessages] = useState<Message[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -69,37 +71,37 @@ export function MessagesPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold">Messagerie</h1>
+                    <h1 className="text-3xl font-bold">{t("nav.messages")}</h1>
                     <p className="text-muted-foreground">
                         {messages.length} message{messages.length > 1 ? "s" : ""}
                         {unreadCount > 0 && (
                             <span className="ml-2 text-primary font-medium">
-                                ({unreadCount} non lu{unreadCount > 1 ? "s" : ""})
+                                ({unreadCount})
                             </span>
                         )}
                     </p>
                 </div>
                 <Button onClick={() => setModalOpen(true)}>
                     <Plus className="w-4 h-4 mr-2" />
-                    Nouveau Message
+                    {t("common.add")}
                 </Button>
             </div>
 
             {/* Messages List */}
             {loading ? (
                 <div className="text-center py-12 text-muted-foreground">
-                    Chargement...
+                    {t("common.loading")}
                 </div>
             ) : messages.length === 0 ? (
                 <Card className="p-12 text-center">
                     <Mail className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                    <h3 className="text-lg font-medium mb-2">Aucun message</h3>
+                    <h3 className="text-lg font-medium mb-2">{t("students.noStudents")}</h3>
                     <p className="text-muted-foreground mb-4">
-                        Commencez une conversation avec vos collègues
+                        {t("nav.messages")}
                     </p>
                     <Button onClick={() => setModalOpen(true)} variant="outline">
                         <Plus className="w-4 h-4 mr-2" />
-                        Envoyer un message
+                        {t("common.add")}
                     </Button>
                 </Card>
             ) : (

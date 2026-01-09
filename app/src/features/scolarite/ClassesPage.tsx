@@ -29,10 +29,12 @@ import {
     EleveInClasse
 } from "./api";
 import { InscriptionModal } from "./InscriptionModal";
+import { useTranslation } from "react-i18next";
 
 const DEFAULT_ANNEE = "2025-2026";
 
 export function ClassesPage() {
+    const { t } = useTranslation();
     const [classes, setClasses] = useState<ClasseListItem[]>([]);
     const [niveaux, setNiveaux] = useState<Niveau[]>([]);
     const [enseignants, setEnseignants] = useState<Enseignant[]>([]);
@@ -211,17 +213,17 @@ export function ClassesPage() {
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <div>
-                    <h2 className="text-2xl font-bold tracking-tight">Classes</h2>
+                    <h2 className="text-2xl font-bold tracking-tight">{t("nav.classes")}</h2>
                     <p className="text-muted-foreground">
-                        Groupes d'élèves pour l'année {DEFAULT_ANNEE}
+                        {t("classes.title")} {DEFAULT_ANNEE}
                     </p>
                 </div>
                 <div className="flex gap-2">
                     <Button variant="outline" onClick={() => openInscriptionModal()}>
-                        <UserPlus className="mr-2 h-4 w-4" /> Inscrire un élève
+                        <UserPlus className="mr-2 h-4 w-4" /> {t("students.addStudent")}
                     </Button>
                     <Button onClick={openAddModal}>
-                        <Plus className="mr-2 h-4 w-4" /> Nouvelle Classe
+                        <Plus className="mr-2 h-4 w-4" /> {t("common.add")}
                     </Button>
                 </div>
             </div>
@@ -229,25 +231,25 @@ export function ClassesPage() {
             <Card>
                 <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
-                        <School className="h-5 w-5" /> Liste des classes
+                        <School className="h-5 w-5" /> {t("nav.classes")}
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Classe</TableHead>
-                                <TableHead>Niveau</TableHead>
-                                <TableHead>Enseignant</TableHead>
-                                <TableHead>Effectif</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
+                                <TableHead>{t("classes.className")}</TableHead>
+                                <TableHead>{t("classes.level")}</TableHead>
+                                <TableHead>{t("classes.teacher")}</TableHead>
+                                <TableHead>{t("nav.students")}</TableHead>
+                                <TableHead className="text-right">{t("common.actions")}</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {classes.length === 0 && !loading && (
                                 <TableRow>
                                     <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                                        Aucune classe définie.
+                                        {t("classes.noClasses")}
                                     </TableCell>
                                 </TableRow>
                             )}
@@ -292,11 +294,11 @@ export function ClassesPage() {
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>{editingId ? "Modifier la classe" : "Nouvelle Classe"}</DialogTitle>
+                        <DialogTitle>{editingId ? t("common.edit") : t("common.add")}</DialogTitle>
                     </DialogHeader>
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Nom de la classe</label>
+                            <label className="text-sm font-medium">{t("classes.className")}</label>
                             <Input
                                 placeholder="Ex: Groupe A, A1..."
                                 value={formData.nom}
@@ -306,14 +308,14 @@ export function ClassesPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Niveau</label>
+                            <label className="text-sm font-medium">{t("classes.level")}</label>
                             <select
                                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                 value={formData.niveau_id}
                                 onChange={(e) => setFormData({ ...formData, niveau_id: e.target.value })}
                                 required
                             >
-                                <option value="">Sélectionner un niveau</option>
+                                <option value="">{t("common.select")}</option>
                                 {niveaux.map((n) => (
                                     <option key={n.id} value={n.id}>
                                         {n.nom}
@@ -323,7 +325,7 @@ export function ClassesPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Enseignant Principal</label>
+                            <label className="text-sm font-medium">{t("classes.teacher")}</label>
                             <select
                                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                 value={formData.enseignant_id}
@@ -340,9 +342,9 @@ export function ClassesPage() {
 
                         <DialogFooter>
                             <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
-                                Annuler
+                                {t("common.cancel")}
                             </Button>
-                            <Button type="submit">Enregistrer</Button>
+                            <Button type="submit">{t("common.save")}</Button>
                         </DialogFooter>
                     </form>
                 </DialogContent>
@@ -353,31 +355,31 @@ export function ClassesPage() {
                 <DialogContent className="max-w-3xl">
                     <DialogHeader>
                         <DialogTitle className="flex justify-between items-center">
-                            <span>Élèves - {selectedClasse?.nom}</span>
+                            <span>{t("nav.students")} - {selectedClasse?.nom}</span>
                             <Button size="sm" onClick={() => openInscriptionModal(selectedClasse?.id)}>
-                                <UserPlus className="mr-2 h-4 w-4" /> Ajouter
+                                <UserPlus className="mr-2 h-4 w-4" /> {t("common.add")}
                             </Button>
                         </DialogTitle>
                     </DialogHeader>
 
                     <div className="max-h-[60vh] overflow-auto">
                         {studentsLoading ? (
-                            <div className="text-center py-8">Chargement...</div>
+                            <div className="text-center py-8">{t("common.loading")}</div>
                         ) : (
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Photo</TableHead>
-                                        <TableHead>Nom & Prénom</TableHead>
-                                        <TableHead>Date Inscription</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
+                                        <TableHead>{t("students.photo")}</TableHead>
+                                        <TableHead>{t("students.lastName")}</TableHead>
+                                        <TableHead>{t("students.registrationDate")}</TableHead>
+                                        <TableHead className="text-right">{t("common.actions")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {classStudents.length === 0 ? (
                                         <TableRow>
                                             <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                                                Aucun élève inscrit dans cette classe.
+                                                {t("students.noStudents")}
                                             </TableCell>
                                         </TableRow>
                                     ) : (

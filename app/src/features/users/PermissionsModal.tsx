@@ -4,6 +4,7 @@ import { Button } from "../../components/ui/button";
 import { usersApi, MODULES, ModulePermission } from "./api";
 import { toast } from "sonner";
 import { Check } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface PermissionsModalProps {
     open: boolean;
@@ -13,6 +14,7 @@ interface PermissionsModalProps {
 }
 
 export function PermissionsModal({ open, onClose, userId, userName }: PermissionsModalProps) {
+    const { t } = useTranslation();
     const [permissions, setPermissions] = useState<Map<string, ModulePermission>>(new Map());
     const [loading, setLoading] = useState(false);
     const [loadingPerms, setLoadingPerms] = useState(false);
@@ -108,24 +110,24 @@ export function PermissionsModal({ open, onClose, userId, userName }: Permission
         <Dialog open={open} onOpenChange={onClose}>
             <DialogContent className="sm:max-w-[700px]">
                 <DialogHeader>
-                    <DialogTitle>Gérer les permissions - {userName}</DialogTitle>
+                    <DialogTitle>{t("users.permissions")} - {userName}</DialogTitle>
                     <p className="text-sm text-muted-foreground">
-                        Définissez les accès pour chaque module
+                        {t("users.permissionsDesc")}
                     </p>
                 </DialogHeader>
 
                 {loadingPerms ? (
                     <div className="py-12 text-center text-muted-foreground">
-                        Chargement des permissions...
+                        {t("common.loading")}
                     </div>
                 ) : (
                     <div className="py-4">
                         {/* Header */}
                         <div className="grid grid-cols-[2fr,1fr,1fr,1fr] gap-4 mb-2 px-4 py-2 bg-muted/50 rounded-lg font-medium text-sm">
-                            <div>Module</div>
-                            <div className="text-center">Lecture</div>
-                            <div className="text-center">Écriture</div>
-                            <div className="text-center">Validation</div>
+                            <div>{t("users.module")}</div>
+                            <div className="text-center">{t("users.read")}</div>
+                            <div className="text-center">{t("users.write")}</div>
+                            <div className="text-center">{t("users.validate")}</div>
                         </div>
 
                         {/* Permissions Grid */}
@@ -200,10 +202,10 @@ export function PermissionsModal({ open, onClose, userId, userName }: Permission
                 {/* Actions */}
                 <div className="flex justify-end gap-2">
                     <Button variant="outline" onClick={onClose} disabled={loading || loadingPerms}>
-                        Annuler
+                        {t("common.cancel")}
                     </Button>
                     <Button onClick={handleSave} disabled={loading || loadingPerms}>
-                        {loading ? "Enregistrement..." : "Enregistrer"}
+                        {loading ? t("common.loading") : t("common.save")}
                     </Button>
                 </div>
             </DialogContent>

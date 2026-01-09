@@ -9,24 +9,52 @@ import { MessagesPage } from "@/features/messages";
 import { UsersPage } from "@/features/users";
 import { ReportsPage } from "@/features/reports";
 import { BackupPage } from "@/features/backup";
+import { AuditLogsPage } from "@/features/settings/AuditLogsPage";
 import { Button } from "@/components/ui/button";
 import { NotificationBadge } from "@/components/NotificationBadge";
 import { invoke } from "@tauri-apps/api/core";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { AnimatePresence, PageTransition } from "@/components/Animations";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { useTranslation } from "react-i18next";
 import logoImage from "@/assets/logo.jpeg";
 
-type Page = "dashboard" | "eleves" | "paiements" | "depenses" | "donneurs" | "messages" | "rapports" | "users" | "classes" | "niveaux" | "enseignants" | "settings";
+interface UserPermission {
+    module: string;
+    can_read: boolean;
+    can_write: boolean;
+    can_validate: boolean;
+}
+
+type Page = "dashboard" | "eleves" | "paiements" | "depenses" | "donneurs" | "messages" | "rapports" | "users" | "classes" | "niveaux" | "enseignants" | "settings" | "history";
 
 export function Dashboard() {
     const { user, logout, isAdmin } = useAuth();
+    const { t } = useTranslation();
     const [currentPage, setCurrentPage] = useState<Page>("dashboard");
-    const [userPermissions, setUserPermissions] = useState<any>(null);
+    const [userPermissions, setUserPermissions] = useState<Record<string, UserPermission>>({});
     const [pendingPayment, setPendingPayment] = useState<{ eleveId: string, months: number[] } | null>(null);
+
+    // Keyboard shortcuts
+    useKeyboardShortcuts([
+        { key: "p", ctrlKey: true, action: () => setCurrentPage("paiements"), description: "Paiements" },
+        { key: "e", ctrlKey: true, action: () => setCurrentPage("eleves"), description: "Élèves" },
+        { key: "d", ctrlKey: true, action: () => setCurrentPage("depenses"), description: "Dépenses" },
+        { key: "h", ctrlKey: true, action: () => setCurrentPage("dashboard"), description: "Dashboard" },
+        { key: "m", ctrlKey: true, action: () => setCurrentPage("messages"), description: "Messages" },
+    ]);
 
     // Load user permissions
     useEffect(() => {
         if (user && !isAdmin) {
-            invoke("get_user_permissions", { userId: user.id })
-                .then((perms) => setUserPermissions(perms))
+            invoke<UserPermission[]>("get_user_permissions", { userId: user.id })
+                .then((perms) => {
+                    const permsMap = perms.reduce((acc, p) => {
+                        acc[p.module] = p;
+                        return acc;
+                    }, {} as Record<string, UserPermission>);
+                    setUserPermissions(permsMap);
+                })
                 .catch((err) => console.error("Error loading permissions:", err));
         }
     }, [user, isAdmin]);
@@ -36,27 +64,29 @@ export function Dashboard() {
         // Admin has access to everything
         if (isAdmin) return true;
 
-        // If permissions not loaded yet for secretary, show nothing
-        if (!userPermissions) return false;
+        // Dashboard is valid for everyone logged in
+        if (pageId === "dashboard") return true;
 
-        // Map pages to permission keys
-        const pagePermissionMap: Record<Page, string> = {
-            dashboard: "view_dashboard",
-            eleves: "create_eleve", // Can view if can create
-            paiements: "create_recu",
-            depenses: "create_depense",
-            donneurs: "create_donneur",
-            messages: "send_message",
-            classes: "create_classe",
-            enseignants: "create_enseignant",
-            niveaux: "create_niveau",
-            rapports: "generate_report",
-            users: "manage_users", // Admin only anyway
-            settings: "backup_restore", // Admin only anyway
+        // If permissions not loaded yet for secretary
+        if (Object.keys(userPermissions).length === 0) return false;
+
+        // Map pages to permission modules
+        const pageModuleMap: Partial<Record<Page, string>> = {
+            eleves: "eleves",
+            paiements: "paiements",
+            depenses: "depenses",
+            donneurs: "donneurs",
+            messages: "messages",
+            classes: "classes",
+            enseignants: "enseignants",
+            niveaux: "niveaux",
+            // reports, users, settings are restricted to admin or handled otherwise
         };
 
-        const requiredPermission = pagePermissionMap[pageId];
-        return requiredPermission ? userPermissions[requiredPermission] === true : false;
+        const details = pageModuleMap[pageId];
+        if (!details) return false; // Default deny for unmapped pages (reports, users, etc.)
+
+        return userPermissions[details]?.can_read === true;
     };
 
     const handleNavigateToPayment = (eleveId: string, months: number[]) => {
@@ -65,21 +95,22 @@ export function Dashboard() {
     };
 
     const navItems = [
-        { id: "dashboard" as Page, label: "Tableau de bord", icon: "📊" },
-        { id: "eleves" as Page, label: "Élèves", icon: "🎓" },
-        { id: "paiements" as Page, label: "Paiements", icon: "💳" },
-        { id: "depenses" as Page, label: "Dépenses", icon: "💸" },
-        { id: "donneurs" as Page, label: "Donneurs", icon: "🎁" },
-        { id: "messages" as Page, label: "Messages", icon: "💬" },
+        { id: "dashboard" as Page, label: t("nav.dashboard"), icon: "📊" },
+        { id: "eleves" as Page, label: t("nav.students"), icon: "🎓" },
+        { id: "paiements" as Page, label: t("nav.payments"), icon: "💳" },
+        { id: "depenses" as Page, label: t("nav.expenses"), icon: "💸" },
+        { id: "donneurs" as Page, label: t("nav.donors"), icon: "🎁" },
+        { id: "messages" as Page, label: t("nav.messages"), icon: "💬" },
 
         // Section Scolarité
-        { id: "classes" as Page, label: "Classes", icon: "🏫" },
-        { id: "enseignants" as Page, label: "Enseignants", icon: "👨‍🏫" },
-        { id: "niveaux" as Page, label: "Niveaux", icon: "📚" },
+        { id: "classes" as Page, label: t("nav.classes"), icon: "🏫" },
+        { id: "enseignants" as Page, label: t("nav.teachers"), icon: "👨‍🏫" },
+        { id: "niveaux" as Page, label: t("nav.levels"), icon: "📚" },
 
-        { id: "rapports" as Page, label: "Rapports", icon: "📈" },
-        ...(isAdmin ? [{ id: "users" as Page, label: "Utilisateurs", icon: "👥" }] : []),
-        ...(isAdmin ? [{ id: "settings" as Page, label: "Paramètres", icon: "⚙️" }] : []),
+        { id: "rapports" as Page, label: t("nav.reports"), icon: "📈" },
+        ...(isAdmin ? [{ id: "users" as Page, label: t("nav.users"), icon: "👥" }] : []),
+        ...(isAdmin ? [{ id: "settings" as Page, label: t("nav.settings"), icon: "⚙️" }] : []),
+        ...(isAdmin ? [{ id: "history" as Page, label: t("nav.history"), icon: "📜" }] : []),
     ].filter(item => hasAccess(item.id));
 
     return (
@@ -145,33 +176,43 @@ export function Dashboard() {
                 <div className="px-4 pb-2">
                     <NotificationBadge onClick={() => setCurrentPage("messages")} />
                 </div>
+                {/* Language Switcher */}
+                <div className="px-4 pb-4">
+                    <LanguageSwitcher />
+                </div>
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 overflow-auto bg-gray-50 p-6">
-                {currentPage === "dashboard" && <DashboardHome onNavigate={setCurrentPage} />}
-                {currentPage === "eleves" && <ElevesPage onNavigateToPayment={handleNavigateToPayment} />}
-                {currentPage === "classes" && <ClassesPage />}
-                {currentPage === "niveaux" && <NiveauxPage />}
-                {currentPage === "enseignants" && <EnseignantsPage />}
-                {currentPage === "paiements" && (
-                    <PaiementsPage
-                        initialData={pendingPayment}
-                        onClearInitialData={() => setPendingPayment(null)}
-                    />
-                )}
-                {currentPage === "depenses" && <DepensesPage />}
-                {currentPage === "donneurs" && <DonneursPage />}
-                {currentPage === "messages" && <MessagesPage />}
-                {currentPage === "users" && <UsersPage />}
-                {currentPage === "rapports" && <ReportsPage />}
-                {currentPage === "settings" && <BackupPage />}
+            <main className="flex-1 overflow-auto bg-gray-50">
+                <AnimatePresence mode="wait">
+                    <PageTransition key={currentPage} className="p-6">
+                        {currentPage === "dashboard" && <DashboardHome onNavigate={setCurrentPage} />}
+                        {currentPage === "eleves" && <ElevesPage onNavigateToPayment={handleNavigateToPayment} />}
+                        {currentPage === "classes" && <ClassesPage />}
+                        {currentPage === "niveaux" && <NiveauxPage />}
+                        {currentPage === "enseignants" && <EnseignantsPage />}
+                        {currentPage === "paiements" && (
+                            <PaiementsPage
+                                initialData={pendingPayment}
+                                onClearInitialData={() => setPendingPayment(null)}
+                            />
+                        )}
+                        {currentPage === "depenses" && <DepensesPage />}
+                        {currentPage === "donneurs" && <DonneursPage />}
+                        {currentPage === "messages" && <MessagesPage />}
+                        {currentPage === "users" && <UsersPage />}
+                        {currentPage === "rapports" && <ReportsPage />}
+                        {currentPage === "settings" && <BackupPage />}
+                        {currentPage === "history" && <AuditLogsPage />}
+                    </PageTransition>
+                </AnimatePresence>
             </main>
         </div>
     );
 }
 
 function DashboardHome({ onNavigate }: { onNavigate: (page: Page) => void }) {
+    const { t } = useTranslation();
     const [stats, setStats] = useState<any>(null);
     const [lateStudents, setLateStudents] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -199,14 +240,14 @@ function DashboardHome({ onNavigate }: { onNavigate: (page: Page) => void }) {
     if (loading) {
         return (
             <div className="p-6 flex items-center justify-center min-h-full">
-                <p className="text-gray-500">Chargement du tableau de bord...</p>
+                <p className="text-gray-500">{t("common.loading")}</p>
             </div>
         );
     }
 
     return (
         <div className="p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Tableau de bord</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">{t("dashboard.title")}</h2>
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
@@ -214,7 +255,7 @@ function DashboardHome({ onNavigate }: { onNavigate: (page: Page) => void }) {
                 <div className="bg-white rounded-xl shadow-sm p-6 border">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-gray-500">Recettes</p>
+                            <p className="text-sm text-gray-500">{t("dashboard.revenue")}</p>
                             <p className="text-2xl font-bold text-emerald-600">
                                 {stats?.total_recettes?.toFixed(2) || 0} DH
                             </p>
@@ -229,7 +270,7 @@ function DashboardHome({ onNavigate }: { onNavigate: (page: Page) => void }) {
                 <div className="bg-white rounded-xl shadow-sm p-6 border">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-gray-500">Dépenses</p>
+                            <p className="text-sm text-gray-500">{t("dashboard.expenses")}</p>
                             <p className="text-2xl font-bold text-red-600">
                                 {stats?.total_depenses?.toFixed(2) || 0} DH
                             </p>
@@ -244,7 +285,7 @@ function DashboardHome({ onNavigate }: { onNavigate: (page: Page) => void }) {
                 <div className="bg-white rounded-xl shadow-sm p-6 border">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-gray-500">Solde</p>
+                            <p className="text-sm text-gray-500">{t("dashboard.balance")}</p>
                             <p className={`text-2xl font-bold ${stats?.solde >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
                                 {stats?.solde?.toFixed(2) || 0} DH
                             </p>
@@ -259,7 +300,7 @@ function DashboardHome({ onNavigate }: { onNavigate: (page: Page) => void }) {
                 <div className="bg-white rounded-xl shadow-sm p-6 border">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-gray-500">Élèves</p>
+                            <p className="text-sm text-gray-500">{t("dashboard.students")}</p>
                             <p className="text-2xl font-bold text-gray-900">
                                 {stats?.total_eleves || 0}
                             </p>
@@ -274,7 +315,7 @@ function DashboardHome({ onNavigate }: { onNavigate: (page: Page) => void }) {
                 <div className="bg-white rounded-xl shadow-sm p-6 border">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-gray-500">Retards</p>
+                            <p className="text-sm text-gray-500">{t("dashboard.latePayments")}</p>
                             <p className="text-2xl font-bold text-orange-600">
                                 {stats?.eleves_en_retard_count || 0}
                             </p>
@@ -287,14 +328,14 @@ function DashboardHome({ onNavigate }: { onNavigate: (page: Page) => void }) {
             </div>
 
             {/* Quick Actions */}
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Actions rapides</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">{t("dashboard.quickActions")}</h3>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                 <Button
                     className="h-20 bg-emerald-600 hover:bg-emerald-700"
                     onClick={() => onNavigate("paiements")}
                 >
                     <span className="text-lg mr-2">💳</span>
-                    Paiements
+                    {t("nav.payments")}
                 </Button>
                 <Button
                     variant="outline"
@@ -302,7 +343,7 @@ function DashboardHome({ onNavigate }: { onNavigate: (page: Page) => void }) {
                     onClick={() => onNavigate("depenses")}
                 >
                     <span className="text-lg mr-2">💸</span>
-                    Dépenses
+                    {t("nav.expenses")}
                 </Button>
                 <Button
                     variant="outline"
@@ -310,7 +351,7 @@ function DashboardHome({ onNavigate }: { onNavigate: (page: Page) => void }) {
                     onClick={() => onNavigate("eleves")}
                 >
                     <span className="text-lg mr-2">👤</span>
-                    Élèves
+                    {t("nav.students")}
                 </Button>
                 <Button
                     variant="outline"
@@ -318,7 +359,7 @@ function DashboardHome({ onNavigate }: { onNavigate: (page: Page) => void }) {
                     onClick={() => onNavigate("messages")}
                 >
                     <span className="text-lg mr-2">✉️</span>
-                    Messages
+                    {t("nav.messages")}
                 </Button>
             </div>
 
@@ -326,17 +367,17 @@ function DashboardHome({ onNavigate }: { onNavigate: (page: Page) => void }) {
             {lateStudents.length > 0 && (
                 <div className="bg-white rounded-xl shadow-sm p-6 border">
                     <h3 className="font-semibold text-gray-900 mb-4">
-                        Élèves en retard de paiement ({lateStudents.length})
+                        {t("dashboard.latePaymentStudents")} ({lateStudents.length})
                     </h3>
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead>
                                 <tr className="border-b">
-                                    <th className="text-left pb-2 text-sm font-medium text-gray-500">Nom</th>
-                                    <th className="text-left pb-2 text-sm font-medium text-gray-500">Prénom</th>
-                                    <th className="text-left pb-2 text-sm font-medium text-gray-500">Classe</th>
-                                    <th className="text-right pb-2 text-sm font-medium text-gray-500">Mois impayés</th>
-                                    <th className="text-right pb-2 text-sm font-medium text-gray-500">Montant dû</th>
+                                    <th className="text-left pb-2 text-sm font-medium text-gray-500">{t("students.lastName")}</th>
+                                    <th className="text-left pb-2 text-sm font-medium text-gray-500">{t("students.firstName")}</th>
+                                    <th className="text-left pb-2 text-sm font-medium text-gray-500">{t("students.class")}</th>
+                                    <th className="text-right pb-2 text-sm font-medium text-gray-500">{t("dashboard.unpaidMonths")}</th>
+                                    <th className="text-right pb-2 text-sm font-medium text-gray-500">{t("dashboard.amountDue")}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -361,3 +402,4 @@ function DashboardHome({ onNavigate }: { onNavigate: (page: Page) => void }) {
         </div>
     );
 }
+

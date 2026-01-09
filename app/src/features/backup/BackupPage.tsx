@@ -1,27 +1,67 @@
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { save, open } from "@tauri-apps/plugin-dialog";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { toast } from "sonner";
-import { Download, Upload, Database, AlertCircle } from "lucide-react";
+import { Download, Upload, Database, AlertCircle, FolderOpen } from "lucide-react";
+
+import { useTranslation } from "react-i18next";
 
 export function BackupPage() {
+    const { t } = useTranslation();
     const [loading, setLoading] = useState(false);
     const [backupPath, setBackupPath] = useState("");
     const [restorePath, setRestorePath] = useState("");
 
+    const handleSelectBackupFile = async () => {
+        try {
+            const path = await save({
+                filters: [{
+                    name: 'Base de données SQLite',
+                    extensions: ['db', 'sqlite']
+                }],
+                defaultPath: `association_backup_${new Date().toISOString().split('T')[0]}.db`
+            });
+
+            if (path) {
+                setBackupPath(path);
+            }
+        } catch (error) {
+            console.error("Erreur sélection fichier:", error);
+        }
+    };
+
+    const handleSelectRestoreFile = async () => {
+        try {
+            const path = await open({
+                multiple: false,
+                filters: [{
+                    name: 'Base de données SQLite',
+                    extensions: ['db', 'sqlite']
+                }]
+            });
+
+            if (path) {
+                setRestorePath(path as string);
+            }
+        } catch (error) {
+            console.error("Erreur sélection fichier:", error);
+        }
+    };
+
     const handleBackup = async () => {
         if (!backupPath) {
-            toast.error("Veuillez entrer un chemin de sauvegarde");
+            toast.error(t("backup.enterPath"));
             return;
         }
 
         try {
             setLoading(true);
             await invoke("backup_database_to_file", { backupPath });
-            toast.success("Base de données sauvegardée avec succès");
+            toast.success(t("backup.backupSuccess"));
             setBackupPath("");
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
@@ -34,14 +74,12 @@ export function BackupPage() {
 
     const handleRestore = async () => {
         if (!restorePath) {
-            toast.error("Veuillez entrer un chemin de restauration");
+            toast.error(t("backup.enterRestorePath"));
             return;
         }
 
         const confirmed = window.confirm(
-            "⚠️ ATTENTION : La restauration remplacera toutes les données actuelles.\\n\\n" +
-            "Une sauvegarde de sécurité sera créée avant la restauration.\\n\\n" +
-            "Voulez-vous continuer ?"
+            t("backup.restoreConfirm")
         );
 
         if (!confirmed) return;
@@ -49,8 +87,8 @@ export function BackupPage() {
         try {
             setLoading(true);
             await invoke("restore_database_from_file", { backupPath: restorePath });
-            toast.success("Base de données restaurée avec succès");
-            toast.info("Veuillez redémarrer l'application");
+            toast.success(t("backup.restoreSuccess"));
+            toast.info(t("backup.restartApp"));
             setRestorePath("");
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
@@ -63,17 +101,16 @@ export function BackupPage() {
 
     return (
         <div className="p-6 space-y-6">
-            <h1 className="text-3xl font-bold">Sauvegarde & Restauration</h1>
+            <h1 className="text-3xl font-bold">{t("nav.backup")}</h1>
 
             {/* Warning Banner */}
             <Card className="p-4 bg-amber-50 border-amber-200">
                 <div className="flex gap-3">
                     <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                     <div>
-                        <h3 className="font-semibold text-amber-900">Important</h3>
+                        <h3 className="font-semibold text-amber-900">{t("common.important")}</h3>
                         <p className="text-sm text-amber-800 mt-1">
-                            Effectuez des sauvegardes régulières de votre base de données.
-                            En cas de problème, vous pourrez restaurer vos données.
+                            {t("backup.warning")}
                         </p>
                     </div>
                 </div>
@@ -84,31 +121,42 @@ export function BackupPage() {
                 <div className="flex items-center gap-3">
                     <Database className="w-6 h-6 text-blue-600" />
                     <div>
-                        <h2 className="text-xl font-semibold">Sauvegarder la base de données</h2>
-                        <p className="text-sm text-gray-600">Créer une copie de toutes vos données</p>
+                        <h2 className="text-xl font-semibold">{t("backup.backupDb")}</h2>
+                        <p className="text-sm text-gray-600">{t("backup.backupDesc")}</p>
                     </div>
                 </div>
 
                 <div className="bg-blue-50 p-4 rounded-lg">
-                    <h3 className="font-medium text-blue-900 mb-2">Que contient la sauvegarde ?</h3>
+                    <h3 className="font-medium text-blue-900 mb-2">{t("backup.contentsTitle")}</h3>
                     <ul className="text-sm text-blue-800 space-y-1">
-                        <li>• Tous les élèves et leurs informations</li>
-                        <li>•  Historique complet des paiements</li>
-                        <li>• Toutes les dépenses et justificatifs</li>
-                        <li>• Donneurs et dons</li>
-                        <li>• Utilisateurs et permissions</li>
-                        <li>• Messages internes</li>
+                        <li>• {t("backup.contentStudents")}</li>
+                        <li>• {t("backup.contentPayments")}</li>
+                        <li>• {t("backup.contentExpenses")}</li>
+                        <li>• {t("backup.contentDonors")}</li>
+                        <li>• {t("backup.contentUsers")}</li>
+                        <li>• {t("backup.contentMessages")}</li>
                     </ul>
                 </div>
 
                 <div className="space-y-3">
-                    <Label>Chemin de sauvegarde (ex: C:\\Backups\\association_backup.db)</Label>
-                    <Input
-                        type="text"
-                        value={backupPath}
-                        onChange={(e) => setBackupPath(e.target.value)}
-                        placeholder="C:\\Backups\\association_backup_2026-01-05.db"
-                    />
+                    <Label>{t("backup.path")}</Label>
+                    <div className="flex gap-2">
+                        <Input
+                            type="text"
+                            value={backupPath}
+                            onChange={(e) => setBackupPath(e.target.value)}
+                            placeholder="C:\\Backups\\association_backup_2026-01-05.db"
+                            className="flex-1"
+                        />
+                        <Button
+                            variant="outline"
+                            onClick={handleSelectBackupFile}
+                            title="Parcourir"
+                        >
+                            <FolderOpen className="w-4 h-4 mr-2" />
+                            Parcourir
+                        </Button>
+                    </div>
                 </div>
 
                 <Button
@@ -142,12 +190,23 @@ export function BackupPage() {
 
                 <div className="space-y-3">
                     <Label>Chemin de sauvegarde à restaurer</Label>
-                    <Input
-                        type="text"
-                        value={restorePath}
-                        onChange={(e) => setRestorePath(e.target.value)}
-                        placeholder="C:\\Backups\\association_backup.db"
-                    />
+                    <div className="flex gap-2">
+                        <Input
+                            type="text"
+                            value={restorePath}
+                            onChange={(e) => setRestorePath(e.target.value)}
+                            placeholder="C:\\Backups\\association_backup.db"
+                            className="flex-1"
+                        />
+                        <Button
+                            variant="outline"
+                            onClick={handleSelectRestoreFile}
+                            title="Parcourir"
+                        >
+                            <FolderOpen className="w-4 h-4 mr-2" />
+                            Parcourir
+                        </Button>
+                    </div>
                 </div>
 
                 <Button
